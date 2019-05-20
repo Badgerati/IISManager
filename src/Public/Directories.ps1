@@ -44,4 +44,8 @@ function Remove-IISDirectory
     }
 
     Invoke-IISAppCommand -Arguments "delete vdir '$($Name)'" -NoParse | Out-Null
+    return (Get-IISDirectories)
 }
+
+#TODO: create vdir?
+#TODO: modify vdir?

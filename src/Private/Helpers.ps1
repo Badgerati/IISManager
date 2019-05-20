@@ -29,7 +29,7 @@ function Invoke-IISAppCommand
         return (Invoke-Expression -Command "$(Get-IISAppCmdPath) $Arguments")
     }
     else {
-        return ([xml](Invoke-Expression -Command "$(Get-IISAppCmdPath) $Arguments /xml")).appcmd
+        return ([xml](Invoke-Expression -Command "$(Get-IISAppCmdPath) $Arguments /xml /config")).appcmd
     }
 }
 
@@ -48,32 +48,44 @@ function Get-IISSiteBindingInformation
 {
     param (
         [Parameter(Mandatory=$true)]
-        [string]
         $Binding
     )
 
     # get the protocol
-    $split = ($Binding -split '/')
-    $protocol = $split[0]
-
-    # reset binding
-    $Binding = ($split[1] -join '')
+    $protocol = $Binding.protocol
+    $info = @{
+        'IP' = $null;
+        'Port' = $null;
+        'Hostname' = $null
+    }
 
     # get ip, port, hostname
-    $split = ($Binding -split ':')
-    $ip = $split[0]
-    $port = $split[1]
-    $hostname = $split[2]
+    $split = ($Binding.bindingInformation -split ':')
+
+    switch ($protocol.ToLowerInvariant()) {
+        'net.tcp' {
+            $info.Port = $split[0]
+            $info.Hostname = $split[1]
+        }
+
+        { @('net.msmq', 'net.pipe', 'msmq.formatname') -icontains $_ } {
+            $info.Hostname = $split[0]
+        }
+
+        default {
+            $info.IP = $split[0]
+            $info.Port = $split[1]
+            $info.Hostname = $split[2]
+        }
+    }
 
     # get cert info for https
     $cert = $null
     if ($protocol -ieq 'https') {
-        #/mnt/c/Windows/System32/netsh.exe http show sslcert
-
         # get netsh details
-        $details = (Invoke-IISNetshCommand -Arguments "http show sslcert ipport=$($ip):$($port)")
-        if ($LASTEXITCODE -ne 0 -and ![string]::IsNullOrWhiteSpace($hostname)) {
-            $details = (Invoke-IISNetshCommand -Arguments "http show sslcert hostnameport=$($hostname):$($port)")
+        $details = (Invoke-IISNetshCommand -Arguments "http show sslcert ipport=$($info.IP):$($info.Port)")
+        if ($LASTEXITCODE -ne 0 -and ![string]::IsNullOrWhiteSpace($info.Hostname)) {
+            $details = (Invoke-IISNetshCommand -Arguments "http show sslcert hostnameport=$($info.Hostname):$($info.Port)")
         }
 
         # get thumbprint
@@ -93,12 +105,55 @@ function Get-IISSiteBindingInformation
     # set the binding info and return
     $info = (New-Object -TypeName psobject |
         Add-Member -MemberType NoteProperty -Name Protocol -Value $protocol -PassThru |
-        Add-Member -MemberType NoteProperty -Name IPAddress -Value $ip -PassThru |
-        Add-Member -MemberType NoteProperty -Name Port -Value $port -PassThru |
-        Add-Member -MemberType NoteProperty -Name Hostname -Value $hostname -PassThru |
+        Add-Member -MemberType NoteProperty -Name IPAddress -Value $info.IP -PassThru |
+        Add-Member -MemberType NoteProperty -Name Port -Value $info.Port -PassThru |
+        Add-Member -MemberType NoteProperty -Name Hostname -Value $info.Hostname -PassThru |
         Add-Member -MemberType NoteProperty -Name Certificate -Value $cert -PassThru)
 
     return $info
+}
+
+function Get-IISBindingCommandString
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Protocol,
+
+        [Parameter()]
+        [int]
+        $Port,
+
+        [Parameter()]
+        [string]
+        $IPAddress,
+
+        [Parameter()]
+        [string]
+        $Hostname
+    )
+
+    if ([string]::IsNullOrWhiteSpace($IPAddress) -and [string]::IsNullOrWhiteSpace($Hostname) -and $Port -le 0) {
+        return "bindings.[protocol='$($Protocol)']"
+    }
+
+    $str = [string]::Empty
+
+    switch ($Protocol.ToLowerInvariant()) {
+        'net.tcp' {
+            $str = "$($Port):$($Hostname)"
+        }
+
+        { @('net.msmq', 'net.pipe', 'msmq.formatname') -icontains $_ } {
+            $str = "$($Hostname)"
+        }
+
+        default {
+            $str = "$($IPAddress):$($Port):$($Hostname)"
+        }
+    }
+
+    return "bindings.[protocol='$($Protocol)',bindingInformation='$($str)']"
 }
 
 function Wait-IISBackgroundTask

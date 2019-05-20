@@ -55,6 +55,7 @@ function Stop-IISAppPool
     }
 
     Invoke-IISAppCommand -Arguments "stop apppool '$($Name)'" -NoParse | Out-Null
+    return (Get-IISAppPools -Name $Name)
 }
 
 function Start-IISAppPool
@@ -70,6 +71,7 @@ function Start-IISAppPool
     }
 
     Invoke-IISAppCommand -Arguments "start apppool '$($Name)'" -NoParse | Out-Null
+    return (Get-IISAppPools -Name $Name)
 }
 
 function Restart-IISAppPool
@@ -80,8 +82,9 @@ function Restart-IISAppPool
         $Name
     )
     
-    Stop-IISAppPool -Name $Name
-    Start-IISAppPool -Name $Name
+    Stop-IISAppPool -Name $Name | Out-Null
+    Start-IISAppPool -Name $Name | Out-Null
+    return (Get-IISAppPools -Name $Name)
 }
 
 function Reset-IISAppPool
@@ -97,6 +100,7 @@ function Reset-IISAppPool
     }
 
     Invoke-IISAppCommand -Arguments "recycle apppool '$($Name)'" -NoParse | Out-Null
+    return (Get-IISAppPools -Name $Name)
 }
 
 function Remove-IISAppPool
@@ -112,6 +116,7 @@ function Remove-IISAppPool
     }
 
     Invoke-IISAppCommand -Arguments "delete apppool '$($Name)'" -NoParse | Out-Null
+    return (Get-IISAppPools)
 }
 
 function New-IISAppPool
@@ -146,3 +151,5 @@ function New-IISAppPool
     Wait-IISBackgroundTask -ScriptBlock { Test-IISAppPool -Name $Name }
     return (Get-IISAppPools -Name $Name)
 }
+
+#TODO: modify app pool

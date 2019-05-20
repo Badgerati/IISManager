@@ -46,4 +46,8 @@ function Remove-IISApp
     }
 
     Invoke-IISAppCommand -Arguments "delete app '$($Name)'" -NoParse | Out-Null
+    return (Get-IISApps)
 }
+
+#TODO: create app?
+#TODO: modify app?
