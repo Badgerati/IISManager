@@ -1,4 +1,4 @@
-function Get-IISApps
+function Get-IISMApps
 {
     param (
         [Parameter()]
@@ -7,22 +7,22 @@ function Get-IISApps
     )
 
     if (![string]::IsNullOrWhiteSpace($Name)) {
-        $result = Invoke-IISAppCommand -Arguments "list app '$($Name)'"
+        $result = Invoke-IISMAppCommand -Arguments "list app '$($Name)'"
     }
     else {
-        $result = Invoke-IISAppCommand -Arguments 'list apps'
+        $result = Invoke-IISMAppCommand -Arguments 'list apps'
     }
 
     if ($null -eq $result) {
         return $null
     }
 
-    $pools = Get-IISAppPools
-    $dirs = Get-IISDirectories
-    ConvertTo-IISAppObject -Apps $result.APP -AppPools $pools -Directories $dirs
+    $pools = Get-IISMAppPools
+    $dirs = Get-IISMDirectories
+    ConvertTo-IISMAppObject -Apps $result.APP -AppPools $pools -Directories $dirs
 }
 
-function Test-IISApp
+function Test-IISMApp
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -30,10 +30,10 @@ function Test-IISApp
         $Name
     )
 
-    return ($null -ne (Get-IISApps -Name $Name))
+    return ($null -ne (Get-IISMApps -Name $Name))
 }
 
-function Remove-IISApp
+function Remove-IISMApp
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -41,12 +41,12 @@ function Remove-IISApp
         $Name
     )
 
-    if (!(Test-IISApp -Name $Name)) {
+    if (!(Test-IISMApp -Name $Name)) {
         return
     }
 
-    Invoke-IISAppCommand -Arguments "delete app '$($Name)'" -NoParse | Out-Null
-    return (Get-IISApps)
+    Invoke-IISMAppCommand -Arguments "delete app '$($Name)'" -NoParse | Out-Null
+    return (Get-IISMApps)
 }
 
 #TODO: create app?

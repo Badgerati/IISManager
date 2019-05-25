@@ -1,4 +1,4 @@
-function Get-IISDirectories
+function Get-IISMDirectories
 {
     param (
         [Parameter()]
@@ -7,20 +7,20 @@ function Get-IISDirectories
     )
 
     if (![string]::IsNullOrWhiteSpace($Name)) {
-        $result = Invoke-IISAppCommand -Arguments "list vdir '$($Name)'"
+        $result = Invoke-IISMAppCommand -Arguments "list vdir '$($Name)'"
     }
     else {
-        $result = Invoke-IISAppCommand -Arguments 'list vdirs'
+        $result = Invoke-IISMAppCommand -Arguments 'list vdirs'
     }
 
     if ($null -eq $result) {
         return $null
     }
 
-    ConvertTo-IISDirectoryObject -Directories $result.VDIR
+    ConvertTo-IISMDirectoryObject -Directories $result.VDIR
 }
 
-function Test-IISDirectory
+function Test-IISMDirectory
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -28,10 +28,10 @@ function Test-IISDirectory
         $Name
     )
 
-    return ($null -ne (Get-IISDirectories -Name $Name))
+    return ($null -ne (Get-IISMDirectories -Name $Name))
 }
 
-function Remove-IISDirectory
+function Remove-IISMDirectory
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -39,12 +39,12 @@ function Remove-IISDirectory
         $Name
     )
 
-    if (!(Test-IISDirectory -Name $Name)) {
+    if (!(Test-IISMDirectory -Name $Name)) {
         return
     }
 
-    Invoke-IISAppCommand -Arguments "delete vdir '$($Name)'" -NoParse | Out-Null
-    return (Get-IISDirectories)
+    Invoke-IISMAppCommand -Arguments "delete vdir '$($Name)'" -NoParse | Out-Null
+    return (Get-IISMDirectories)
 }
 
 #TODO: create vdir?

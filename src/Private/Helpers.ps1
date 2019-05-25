@@ -1,4 +1,4 @@
-function Write-IISWarning
+function Write-IISMWarning
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -14,7 +14,7 @@ function Test-IsUnix
     return $PSVersionTable.Platform -ieq 'unix'
 }
 
-function Invoke-IISAppCommand
+function Invoke-IISMAppCommand
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -26,14 +26,14 @@ function Invoke-IISAppCommand
     )
 
     if ($NoParse) {
-        return (Invoke-Expression -Command "$(Get-IISAppCmdPath) $Arguments")
+        return (Invoke-Expression -Command "$(Get-IISMAppCmdPath) $Arguments")
     }
     else {
-        return ([xml](Invoke-Expression -Command "$(Get-IISAppCmdPath) $Arguments /xml /config")).appcmd
+        return ([xml](Invoke-Expression -Command "$(Get-IISMAppCmdPath) $Arguments /xml /config")).appcmd
     }
 }
 
-function Invoke-IISNetshCommand
+function Invoke-IISMNetshCommand
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -41,10 +41,10 @@ function Invoke-IISNetshCommand
         $Arguments
     )
 
-    return (Invoke-Expression -Command "$(Get-IISNetshPath) $Arguments")
+    return (Invoke-Expression -Command "$(Get-IISMNetshPath) $Arguments")
 }
 
-function Get-IISSiteBindingInformation
+function Get-IISMSiteBindingInformation
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -83,9 +83,9 @@ function Get-IISSiteBindingInformation
     $cert = $null
     if ($protocol -ieq 'https') {
         # get netsh details
-        $details = (Invoke-IISNetshCommand -Arguments "http show sslcert ipport=$($info.IP):$($info.Port)")
+        $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert ipport=$($info.IP):$($info.Port)")
         if ($LASTEXITCODE -ne 0 -and ![string]::IsNullOrWhiteSpace($info.Hostname)) {
-            $details = (Invoke-IISNetshCommand -Arguments "http show sslcert hostnameport=$($info.Hostname):$($info.Port)")
+            $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert hostnameport=$($info.Hostname):$($info.Port)")
         }
 
         # get thumbprint
@@ -113,7 +113,7 @@ function Get-IISSiteBindingInformation
     return $info
 }
 
-function Get-IISBindingCommandString
+function Get-IISMBindingCommandString
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -156,7 +156,7 @@ function Get-IISBindingCommandString
     return "bindings.[protocol='$($Protocol)',bindingInformation='$($str)']"
 }
 
-function Wait-IISBackgroundTask
+function Wait-IISMBackgroundTask
 {
     param (
         [Parameter(Mandatory=$true)]

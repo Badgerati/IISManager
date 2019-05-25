@@ -8,40 +8,40 @@ Unlike other modules, this module has no dependency on any DLLs. The only depend
 
 ### Application Pools
 
-* Get-IISAppPools
-* New-IISAppPool
-* Remove-IISAppPool
-* Reset-IISAppPool
-* Restart-IISAppPool
-* Start-IISAppPool
-* Stop-IISAppPool
-* Test-IISAppPool
-* Test-IISAppPoolRunning
+* Get-IISMAppPools
+* New-IISMAppPool
+* Remove-IISMAppPool
+* Reset-IISMAppPool
+* Restart-IISMAppPool
+* Start-IISMAppPool
+* Stop-IISMAppPool
+* Test-IISMAppPool
+* Test-IISMAppPoolRunning
 
 ### Apps
 
-* Get-IISApps
-* Remove-IISApp
-* Test-IISApp
+* Get-IISMApps
+* Remove-IISMApp
+* Test-IISMApp
 
 ### Directories
 
-* Get-IISDirectories
-* Remove-IISDirectory
-* Test-IISDirectory
+* Get-IISMDirectories
+* Remove-IISMDirectory
+* Test-IISMDirectory
 
 ### Sites
 
-* Get-IISSites
-* Get-IISSiteBindings
-* Get-IISSitePhysicalPath
-* New-IISSiteBinding
-* Remove-IISSite
-* Remove-IISSiteBinding
-* Restart-IISSite
-* Start-IISSite
-* Stop-IISSite
-* Test-IISSite
-* Test-IISSiteRunning
+* Get-IISMSites
+* Get-IISMSiteBindings
+* Get-IISMSitePhysicalPath
+* New-IISMSiteBinding
+* Remove-IISMSite
+* Remove-IISMSiteBinding
+* Restart-IISMSite
+* Start-IISMSite
+* Stop-IISMSite
+* Test-IISMSite
+* Test-IISMSiteRunning
 
 

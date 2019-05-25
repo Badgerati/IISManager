@@ -1,4 +1,4 @@
-function Get-IISHomePath
+function Get-IISMHomePath
 {
     if (Test-IsUnix) {
         return "/mnt/c/Windows/System32"
@@ -8,12 +8,12 @@ function Get-IISHomePath
     }
 }
 
-function Get-IISAppCmdPath
+function Get-IISMAppCmdPath
 {
-    return (Join-Path (Get-IISHomePath) (Join-Path 'inetsrv' 'appcmd.exe'))
+    return (Join-Path (Get-IISMHomePath) (Join-Path 'inetsrv' 'appcmd.exe'))
 }
 
-function Get-IISNetshPath
+function Get-IISMNetshPath
 {
-    return (Join-Path (Get-IISHomePath) 'netsh.exe')
+    return (Join-Path (Get-IISMHomePath) 'netsh.exe')
 }

@@ -1,4 +1,4 @@
-function ConvertTo-IISSiteObject
+function ConvertTo-IISMSiteObject
 {
     param (
         [Parameter()]
@@ -17,7 +17,7 @@ function ConvertTo-IISSiteObject
         }
 
         $_bindings = @($site.site.bindings.binding | ForEach-Object {
-            Get-IISSiteBindingInformation -Binding $_
+            Get-IISMSiteBindingInformation -Binding $_
         })
 
         $obj = (New-Object -TypeName psobject |
@@ -39,7 +39,7 @@ function ConvertTo-IISSiteObject
     return $mapped
 }
 
-function ConvertTo-IISAppPoolObject
+function ConvertTo-IISMAppPoolObject
 {
     param (
         [Parameter()]
@@ -66,7 +66,7 @@ function ConvertTo-IISAppPoolObject
     return $mapped
 }
 
-function ConvertTo-IISAppObject
+function ConvertTo-IISMAppObject
 {
     param (
         [Parameter()]
@@ -98,7 +98,7 @@ function ConvertTo-IISAppObject
     return $mapped
 }
 
-function ConvertTo-IISDirectoryObject
+function ConvertTo-IISMDirectoryObject
 {
     param (
         [Parameter()]

@@ -1,4 +1,4 @@
-function Get-IISAppPools
+function Get-IISMAppPools
 {
     param (
         [Parameter()]
@@ -7,20 +7,20 @@ function Get-IISAppPools
     )
 
     if (![string]::IsNullOrWhiteSpace($Name)) {
-        $result = Invoke-IISAppCommand -Arguments "list apppool '$($Name)'"
+        $result = Invoke-IISMAppCommand -Arguments "list apppool '$($Name)'"
     }
     else {
-        $result = Invoke-IISAppCommand -Arguments 'list apppools'
+        $result = Invoke-IISMAppCommand -Arguments 'list apppools'
     }
 
     if ($null -eq $result) {
         return $null
     }
 
-    ConvertTo-IISAppPoolObject -AppPools $result.APPPOOL
+    ConvertTo-IISMAppPoolObject -AppPools $result.APPPOOL
 }
 
-function Test-IISAppPool
+function Test-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -28,10 +28,10 @@ function Test-IISAppPool
         $Name
     )
 
-    return ($null -ne (Get-IISAppPools -Name $Name))
+    return ($null -ne (Get-IISMAppPools -Name $Name))
 }
 
-function Test-IISAppPoolRunning
+function Test-IISMAppPoolRunning
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -39,10 +39,10 @@ function Test-IISAppPoolRunning
         $Name
     )
 
-    return ((Get-IISAppPools -Name $Name).State -ieq 'started')
+    return ((Get-IISMAppPools -Name $Name).State -ieq 'started')
 }
 
-function Stop-IISAppPool
+function Stop-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -50,15 +50,15 @@ function Stop-IISAppPool
         $Name
     )
 
-    if (!(Test-IISAppPoolRunning -Name $Name)) {
+    if (!(Test-IISMAppPoolRunning -Name $Name)) {
         return
     }
 
-    Invoke-IISAppCommand -Arguments "stop apppool '$($Name)'" -NoParse | Out-Null
-    return (Get-IISAppPools -Name $Name)
+    Invoke-IISMAppCommand -Arguments "stop apppool '$($Name)'" -NoParse | Out-Null
+    return (Get-IISMAppPools -Name $Name)
 }
 
-function Start-IISAppPool
+function Start-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -66,15 +66,15 @@ function Start-IISAppPool
         $Name
     )
 
-    if (Test-IISAppPoolRunning -Name $Name) {
+    if (Test-IISMAppPoolRunning -Name $Name) {
         return
     }
 
-    Invoke-IISAppCommand -Arguments "start apppool '$($Name)'" -NoParse | Out-Null
-    return (Get-IISAppPools -Name $Name)
+    Invoke-IISMAppCommand -Arguments "start apppool '$($Name)'" -NoParse | Out-Null
+    return (Get-IISMAppPools -Name $Name)
 }
 
-function Restart-IISAppPool
+function Restart-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -82,12 +82,12 @@ function Restart-IISAppPool
         $Name
     )
     
-    Stop-IISAppPool -Name $Name | Out-Null
-    Start-IISAppPool -Name $Name | Out-Null
-    return (Get-IISAppPools -Name $Name)
+    Stop-IISMAppPool -Name $Name | Out-Null
+    Start-IISMAppPool -Name $Name | Out-Null
+    return (Get-IISMAppPools -Name $Name)
 }
 
-function Reset-IISAppPool
+function Reset-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -95,15 +95,15 @@ function Reset-IISAppPool
         $Name
     )
 
-    if (!(Test-IISAppPoolRunning -Name $Name)) {
+    if (!(Test-IISMAppPoolRunning -Name $Name)) {
         return
     }
 
-    Invoke-IISAppCommand -Arguments "recycle apppool '$($Name)'" -NoParse | Out-Null
-    return (Get-IISAppPools -Name $Name)
+    Invoke-IISMAppCommand -Arguments "recycle apppool '$($Name)'" -NoParse | Out-Null
+    return (Get-IISMAppPools -Name $Name)
 }
 
-function Remove-IISAppPool
+function Remove-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -111,15 +111,15 @@ function Remove-IISAppPool
         $Name
     )
 
-    if (!(Test-IISAppPool -Name $Name)) {
+    if (!(Test-IISMAppPool -Name $Name)) {
         return
     }
 
-    Invoke-IISAppCommand -Arguments "delete apppool '$($Name)'" -NoParse | Out-Null
-    return (Get-IISAppPools)
+    Invoke-IISMAppCommand -Arguments "delete apppool '$($Name)'" -NoParse | Out-Null
+    return (Get-IISMAppPools)
 }
 
-function New-IISAppPool
+function New-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -140,16 +140,16 @@ function New-IISAppPool
         $Enable32Bit
     )
 
-    if (Test-IISAppPool -Name $Name) {
-        Write-IISWarning "The application pool already exists"
+    if (Test-IISMAppPool -Name $Name) {
+        Write-IISMWarning "The application pool already exists"
         return
     }
 
     $_args = "/name:'$($Name)' /managedRuntimeVersion:v$($RuntimeVersion) /managedPipelineMode:$($PipelineMode) /enable32BitAppOnWin64:$($Enable32Bit)"
-    Invoke-IISAppCommand -Arguments "add apppool $($_args)" -NoParse | Out-Null
+    Invoke-IISMAppCommand -Arguments "add apppool $($_args)" -NoParse | Out-Null
 
-    Wait-IISBackgroundTask -ScriptBlock { Test-IISAppPool -Name $Name }
-    return (Get-IISAppPools -Name $Name)
+    Wait-IISMBackgroundTask -ScriptBlock { Test-IISMAppPool -Name $Name }
+    return (Get-IISMAppPools -Name $Name)
 }
 
 #TODO: modify app pool
