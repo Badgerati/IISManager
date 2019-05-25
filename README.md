@@ -4,6 +4,8 @@ This is a lightweight PowerShell module to manage IIS instances, with support fo
 
 Unlike other modules, this module has no dependency on any DLLs. The only dependency is that you have IIS installed on the server.
 
+NOTE: This is a work in progress, so there will be bugs/changes. This will be on the PowerShell Gallery once stable. Feel free to contribute.
+
 ## Functions
 
 ### Application Pools
@@ -32,10 +34,10 @@ Unlike other modules, this module has no dependency on any DLLs. The only depend
 
 ### Sites
 
+* Add-IISMSiteBinding
 * Get-IISMSites
 * Get-IISMSiteBindings
 * Get-IISMSitePhysicalPath
-* New-IISMSiteBinding
 * Remove-IISMSite
 * Remove-IISMSiteBinding
 * Restart-IISMSite

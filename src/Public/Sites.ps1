@@ -156,11 +156,11 @@ function Remove-IISMSiteBinding
     )
 
     $binding = Get-IISMBindingCommandString -Protocol $Protocol -Port $Port -IPAddress $IPAddress -Hostname $Hostname
-    Invoke-IISMAppCommand -Arguments "set site '$($Name)' /-$($binding)" -NoParse | Out-Null
+    Invoke-IISMAppCommand -Arguments "set site '$($Name)' /-`"$($binding)`"" -NoParse | Out-Null
     return (Get-IISMSiteBindings -Name $Name)
 }
 
-function New-IISMSiteBinding
+function Add-IISMSiteBinding
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -186,7 +186,7 @@ function New-IISMSiteBinding
     )
 
     $binding = Get-IISMBindingCommandString -Protocol $Protocol -Port $Port -IPAddress $IPAddress -Hostname $Hostname
-    Invoke-IISMAppCommand -Arguments "set site '$($Name)' /+$($binding)" -NoParse | Out-Null
+    Invoke-IISMAppCommand -Arguments "set site '$($Name)' /+`"$($binding)`"" -NoParse | Out-Null
     return (Get-IISMSiteBindings -Name $Name)
 }
 
