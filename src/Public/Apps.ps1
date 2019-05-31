@@ -3,11 +3,18 @@ function Get-IISMApps
     param (
         [Parameter()]
         [string]
+        $SiteName,
+
+        [Parameter()]
+        [string]
         $Name
     )
 
-    if (![string]::IsNullOrWhiteSpace($Name)) {
-        $result = Invoke-IISMAppCommand -Arguments "list app '$($Name)'"
+    $Name = Add-IISMSlash -Value $Name
+    $AppName = "$($SiteName)$($Name)"
+
+    if (![string]::IsNullOrWhiteSpace($SiteName)) {
+        $result = Invoke-IISMAppCommand -Arguments "list app '$($AppName)'"
     }
     else {
         $result = Invoke-IISMAppCommand -Arguments 'list apps'
@@ -27,10 +34,14 @@ function Test-IISMApp
     param (
         [Parameter(Mandatory=$true)]
         [string]
-        $Name
+        $SiteName,
+
+        [Parameter()]
+        [string]
+        $Name = '/'
     )
 
-    return ($null -ne (Get-IISMApps -Name $Name))
+    return ($null -ne (Get-IISMApps -SiteName $SiteName -Name $Name))
 }
 
 function Remove-IISMApp
@@ -38,16 +49,113 @@ function Remove-IISMApp
     param (
         [Parameter(Mandatory=$true)]
         [string]
-        $Name
+        $SiteName,
+
+        [Parameter()]
+        [string]
+        $Name = '/'
     )
 
-    if (!(Test-IISMApp -Name $Name)) {
-        return
+    $Name = Add-IISMSlash -Value $Name
+
+    if (Test-IISMApp -SiteName $SiteName -Name $Name) {
+        Invoke-IISMAppCommand -Arguments "delete app '$($SiteName)$($Name)'" -NoParse | Out-Null
     }
 
-    Invoke-IISMAppCommand -Arguments "delete app '$($Name)'" -NoParse | Out-Null
     return (Get-IISMApps)
 }
 
-#TODO: create app?
-#TODO: modify app?
+function New-IISMApp
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $SiteName,
+
+        [Parameter()]
+        [string]
+        $Name = '/',
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $PhysicalPath,
+
+        [Parameter()]
+        [string]
+        $AppPoolName
+    )
+
+    $Name = Add-IISMSlash -Value $Name
+
+    # error if app already exists
+    if (Test-IISMApp -SiteName $SiteName -Name $Name) {
+        throw "Application '$($SiteName)$($Name)' already exists in IIS"
+    }
+
+    # create the app
+    $_args = "/site.name:'$($SiteName)' /path:$($Name) /physicalPath:'$($PhysicalPath)'"
+    if (![string]::IsNullOrWhiteSpace($AppPoolName)) {
+        $_args += " /applicationPool:'$($AppPoolName)'"
+    }
+
+    Invoke-IISMAppCommand -Arguments "add app $($_args)" -NoParse | Out-Null
+    Wait-IISMBackgroundTask -ScriptBlock { Test-IISMApp -SiteName $SiteName -Name $Name }
+
+    # return the app
+    return (Get-IISMApps -SiteName $SiteName -Name $Name)
+}
+
+function Update-IISMApp
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $SiteName,
+
+        [Parameter()]
+        [string]
+        $Name = '/',
+
+        [Parameter()]
+        [string]
+        $PhysicalPath,
+
+        [Parameter()]
+        [string]
+        $AppPoolName
+    )
+
+    $Name = Add-IISMSlash -Value $Name
+    $AppName = "$($SiteName)$($Name)"
+
+    # error if app doesn't exists
+    if (!(Test-IISMApp -SiteName $SiteName -Name $Name)) {
+        throw "Application '$($AppName)' does not exist in IIS"
+    }
+
+    # update the physical path
+    if (![string]::IsNullOrWhiteSpace($PhysicalPath)) {
+        Invoke-IISMAppCommand -Arguments "set app '$($AppName)' /physicalPath:'$($PhysicalPath)'" -NoParse | Out-Null
+    }
+
+    # update the application pool
+    if (![string]::IsNullOrWhiteSpace($AppPoolName)) {
+        Invoke-IISMAppCommand -Arguments "set app '$($AppName)' /applicationPool:'$($AppPoolName)'" -NoParse | Out-Null
+    }
+
+    # return the app
+    return (Get-IISMApps -SiteName $SiteName -Name $Name)
+
+
+
+
+    # create the app
+    $_args = "/site.name:'$($SiteName)' /path:$($Name) /physicalPath:'$($PhysicalPath)'"
+    if (![string]::IsNullOrWhiteSpace($AppPoolName)) {
+        $_args += " /applicationPool:'$($AppPoolName)'"
+    }
+
+    Invoke-IISMAppCommand -Arguments "add app $($_args)" -NoParse | Out-Null
+    Wait-IISMBackgroundTask -ScriptBlock { Test-IISMApp -SiteName $SiteName -Name $Name }
+
+}

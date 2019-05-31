@@ -17,3 +17,8 @@ function Get-IISMNetshPath
 {
     return (Join-Path (Get-IISMHomePath) 'netsh.exe')
 }
+
+function Get-IISMNetPath
+{
+    return (Join-Path (Get-IISMHomePath) 'net.exe')
+}

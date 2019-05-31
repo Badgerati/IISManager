@@ -44,6 +44,17 @@ function Invoke-IISMNetshCommand
     return (Invoke-Expression -Command "$(Get-IISMNetshPath) $Arguments")
 }
 
+function Invoke-IISMNetCommand
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Arguments
+    )
+
+    return (Invoke-Expression -Command "$(Get-IISMNetPath) $Arguments")
+}
+
 function Get-IISMSiteBindingInformation
 {
     param (
@@ -82,24 +93,7 @@ function Get-IISMSiteBindingInformation
     # get cert info for https
     $cert = $null
     if ($protocol -ieq 'https') {
-        # get netsh details
-        $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert ipport=$($info.IP):$($info.Port)")
-        if ($LASTEXITCODE -ne 0 -and ![string]::IsNullOrWhiteSpace($info.Hostname)) {
-            $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert hostnameport=$($info.Hostname):$($info.Port)")
-        }
-
-        # get thumbprint
-        $thumbprint = (($details -imatch 'Certificate Hash\s+:\s+([a-z0-9]+)') -split ':')[1].Trim()
-
-        # get cert subject
-        if (!(Test-IsUnix)) {
-            $subject = (Get-ChildItem "Cert:/LocalMachine/My/$($t)").Subject
-        }
-
-        # set the cert
-        $cert = (New-Object -TypeName psobject |
-            Add-Member -MemberType NoteProperty -Name Thumbprint -Value $thumbprint -PassThru |
-            Add-Member -MemberType NoteProperty -Name Subject -Value $subject -PassThru)
+        $cert = Get-IISMSiteBindingCertificate -Port $info.Port -IPAddress $info.IP -Hostname $info.Hostname
     }
 
     # set the binding info and return
@@ -174,4 +168,36 @@ function Wait-IISMBackgroundTask
     }
 
     throw 'Object not created in time'
+}
+
+function Add-IISMSlash
+{
+    param (
+        [Parameter()]
+        [string]
+        $Value,
+
+        [switch]
+        $CheckNonEmpty,
+
+        [switch]
+        $Append
+    )
+
+    if ($CheckNonEmpty -and [string]::IsNullOrWhiteSpace($Value)) {
+        return $Value
+    }
+
+    if ($Append) {
+        if (!$Value.EndsWith('/')) {
+            $Value = "$($Value)/"
+        }
+    }
+    else {
+        if (!$Value.StartsWith('/')) {
+            $Value = "/$($Value)"
+        }
+    }
+
+    return $Value
 }

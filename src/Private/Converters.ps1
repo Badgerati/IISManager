@@ -11,9 +11,9 @@ function ConvertTo-IISMSiteObject
     $mapped = @()
 
     foreach ($site in $Sites) {
-        $_apps = @{}
+        $_apps = @()
         $Apps | Where-Object { $_.SiteName -ieq $site.'SITE.NAME' } | ForEach-Object {
-            $_apps[$_.Path] = $_
+            $_apps += $_
         }
 
         $_bindings = @($site.site.bindings.binding | ForEach-Object {
