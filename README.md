@@ -60,6 +60,7 @@ NOTE: This is a work in progress, so there will be bugs/changes. This will be on
 * New-IISMSite
 * Remove-IISMSite
 * Remove-IISMSiteBinding
+* Remove-IISMSiteBindings
 * Remove-IISMSiteDefaultBinding
 * Remove-IISMSiteBindingCertificate
 * Restart-IISMSite
@@ -67,5 +68,6 @@ NOTE: This is a work in progress, so there will be bugs/changes. This will be on
 * Start-IISMSite
 * Stop-IISMSite
 * Test-IISMSite
+* Test-IISMSiteBinding
 * Test-IISMSiteBindingCertificate
 * Test-IISMSiteRunning

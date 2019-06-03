@@ -222,10 +222,77 @@ function Remove-IISMSite
     )
 
     if (Test-IISMSite -Name $Name) {
+        # first remove all bindings - in an attempt to remove cert bindings
+        Remove-IISMSiteBindings -Name $Name
+
+        # then, remove the site and everything else
         Invoke-IISMAppCommand -Arguments "delete site '$($Name)'" -NoParse | Out-Null
     }
 
     return (Get-IISMSites)
+}
+
+function Test-IISMSiteBinding
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [Alias('n')]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('ftp', 'http', 'https', 'msmq.formatname', 'net.msmq', 'net.pipe', 'net.tcp')]
+        [string]
+        $Protocol,
+
+        [Parameter()]
+        [int]
+        $Port,
+
+        [Parameter()]
+        [Alias('ip')]
+        [string]
+        $IPAddress,
+
+        [Parameter()]
+        [string]
+        $Hostname
+    )
+
+    # error if the site doesn't exist
+    if (!(Test-IISMSite -Name $Name)) {
+        throw "Website '$($Name)' does not exist in IIS"
+    }
+
+    # get the website bindings
+    $bindings = Get-IISMSiteBindings -Name $Name
+    foreach ($b in $bindings) {
+        if ($b.Protocol -ieq $Protocol -and $b.Port -eq $Port -and $b.IPAddress -ieq $IPAddress -and $b.Hostname -ieq $Hostname) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Remove-IISMSiteBindings
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [Alias('n')]
+        [string]
+        $Name
+    )
+
+    # error if the site doesn't exist
+    if (!(Test-IISMSite -Name $Name)) {
+        throw "Website '$($Name)' does not exist in IIS"
+    }
+
+    # remove all bindings
+    @(Get-IISMSiteBindings -Name $Name) | ForEach-Object {
+        Remove-IISMSiteBinding -Name $Name -Protocol $_.Protocol -Port $_.Port -IPAddress $_.IPAddress -Hostname $_.Hostname | Out-Null
+    }
 }
 
 function Remove-IISMSiteBinding
@@ -258,6 +325,16 @@ function Remove-IISMSiteBinding
     # error if the site doesn't exist
     if (!(Test-IISMSite -Name $Name)) {
         throw "Website '$($Name)' does not exist in IIS"
+    }
+
+    # do nothing if binding doesn't exist
+    if (!(Test-IISMSiteBinding -Name $Name -Protocol $Protocol -Port $Port -IPAddress $IPAddress -Hostname $Hostname)) {
+        return
+    }
+
+    # if https, attempt to unbind cert first
+    if ($Protocol -ieq 'https') {
+        Remove-IISMSiteBindingCertificate -Port $Port -IPAddress $IPAddress -Hostname $Hostname
     }
 
     $binding = Get-IISMBindingCommandString -Protocol $Protocol -Port $Port -IPAddress $IPAddress -Hostname $Hostname
@@ -301,7 +378,11 @@ function Add-IISMSiteBinding
 
         [Parameter()]
         [string]
-        $Hostname
+        $Hostname,
+
+        [Parameter()]
+        [string]
+        $CertificateThumbprint
     )
 
     # error if the site doesn't exist
@@ -309,8 +390,18 @@ function Add-IISMSiteBinding
         throw "Website '$($Name)' does not exist in IIS"
     }
 
+    # attempt to remove the binding first, if it exists
+    Remove-IISMSiteBinding -Name $Name -Protocol $Protocol -Port $Port -IPAddress $IPAddress -Hostname $Hostname | Out-Null
+
+    # add the binding
     $binding = Get-IISMBindingCommandString -Protocol $Protocol -Port $Port -IPAddress $IPAddress -Hostname $Hostname
     Invoke-IISMAppCommand -Arguments "set site '$($Name)' /+`"$($binding)`"" -NoParse | Out-Null
+
+    # if https, bind a certificate if thumbprint supplied
+    if ($Protocol -ieq 'https' -and ![string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
+        Set-IISMSiteBindingCertificate -CertificateThumbprint $CertificateThumbprint -Port $Port -IPAddress $IPAddress -Hostname $Hostname
+    }
+
     return (Get-IISMSiteBindings -Name $Name)
 }
 
@@ -473,7 +564,7 @@ function Set-IISMSiteBindingCertificate
     $appId = '{a3ba417c-dc1d-446b-95a5-a306ab26c1af}'
 
     # bind cert using hostname
-    if (![string]::IsNullOrWhiteSpace($Hostname)) {
+    if (![string]::IsNullOrWhiteSpace($Hostname) -and $Hostname -ine '*') {
         $addr = "$($Hostname):$($Port)"
         $result = (Invoke-IISMNetshCommand -Arguments "http add sslcert hostnameport=$($addr) certhash=$($CertificateThumbprint) certstorename=MY appid='$($appId)'" -NoError)
     }
@@ -517,7 +608,7 @@ function Remove-IISMSiteBindingCertificate
     }
 
     # delete cert using hostname
-    if (![string]::IsNullOrWhiteSpace($Hostname)) {
+    if (![string]::IsNullOrWhiteSpace($Hostname) -and $Hostname -ine '*') {
         $addr = "$($Hostname):$($Port)"
         $result = (Invoke-IISMNetshCommand -Arguments "http delete sslcert hostnameport=$($addr)" -NoError)
     }
@@ -525,7 +616,7 @@ function Remove-IISMSiteBindingCertificate
     # else, delete using IP address
     else {
         $addr = "$($IPAddress):$($Port)"
-        $result = (Invoke-IISMNetshCommand -Arguments "http add sslcert ipport=$($addr)" -NoError)
+        $result = (Invoke-IISMNetshCommand -Arguments "http delete sslcert ipport=$($addr)" -NoError)
     }
 
     if ($LASTEXITCODE -ne 0 -or !$?) {
@@ -574,12 +665,15 @@ function Get-IISMSiteBindingCertificate
     $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert ipport=$($IPAddress):$($Port)" -NoError)
 
     # if that threw an error, and we have a hostname, check that
-    if ($LASTEXITCODE -ne 0 -and ![string]::IsNullOrWhiteSpace($Hostname)) {
+    if ($LASTEXITCODE -ne 0 -and ![string]::IsNullOrWhiteSpace($Hostname) -and $Hostname -ine '*') {
         $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert hostnameport=$($Hostname):$($Port)" -NoError)
     }
 
     # get the thumbprint from the output
-    $thumbprint = (($details -imatch 'Certificate Hash\s+:\s+([a-z0-9]+)') -split ':')[1].Trim()
+    $thumbprint = (($details -imatch 'Certificate Hash\s+:\s+([a-z0-9]+)') -split ':')[1]
+    if (![string]::IsNullOrWhiteSpace($thumbprint)) {
+        $thumbprint = $thumbprint.Trim()
+    }
 
     # if no thumbprint, return null
     if ([string]::IsNullOrWhiteSpace($thumbprint)) {
