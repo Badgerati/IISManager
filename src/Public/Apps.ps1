@@ -14,10 +14,10 @@ function Get-IISMApps
     $AppName = "$($SiteName)$($Name)"
 
     if (![string]::IsNullOrWhiteSpace($SiteName)) {
-        $result = Invoke-IISMAppCommand -Arguments "list app '$($AppName)'"
+        $result = Invoke-IISMAppCommand -Arguments "list app '$($AppName)'" -NoError
     }
     else {
-        $result = Invoke-IISMAppCommand -Arguments 'list apps'
+        $result = Invoke-IISMAppCommand -Arguments 'list apps' -NoError
     }
 
     if ($null -eq $result) {
@@ -145,17 +145,4 @@ function Update-IISMApp
 
     # return the app
     return (Get-IISMApps -SiteName $SiteName -Name $Name)
-
-
-
-
-    # create the app
-    $_args = "/site.name:'$($SiteName)' /path:$($Name) /physicalPath:'$($PhysicalPath)'"
-    if (![string]::IsNullOrWhiteSpace($AppPoolName)) {
-        $_args += " /applicationPool:'$($AppPoolName)'"
-    }
-
-    Invoke-IISMAppCommand -Arguments "add app $($_args)" -NoParse | Out-Null
-    Wait-IISMBackgroundTask -ScriptBlock { Test-IISMApp -SiteName $SiteName -Name $Name }
-
 }

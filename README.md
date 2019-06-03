@@ -16,6 +16,7 @@ NOTE: This is a work in progress, so there will be bugs/changes. This will be on
 * New-IISMAppPool
 * Remove-IISMAppPool
 * Reset-IISMAppPool
+* Reset-IISMServer
 * Restart-IISMAppPool
 * Start-IISMAppPool
 * Stop-IISMAppPool
@@ -36,10 +37,13 @@ NOTE: This is a work in progress, so there will be bugs/changes. This will be on
 ### Directories
 
 * Get-IISMDirectories
+* Get-IISMDirectoryShare
 * New-IISMDirectory
 * Remove-IISMDirectory
+* Remove-IISMDirectoryShare
 * Set-IISMDirectoryShare
 * Test-IISMDirectory
+* Test-IISMDirectoryShare
 * Update-IISMDirectory
 * Update-IISMDirectoryPhysicalPaths
 
@@ -55,6 +59,7 @@ NOTE: This is a work in progress, so there will be bugs/changes. This will be on
 * New-IISMSite
 * Remove-IISMSite
 * Remove-IISMSiteBinding
+* Remove-IISMSiteDefaultBinding
 * Remove-IISMSiteBindingCertificate
 * Restart-IISMSite
 * Set-IISMSiteBindingCertificate

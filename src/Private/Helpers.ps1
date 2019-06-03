@@ -1,14 +1,3 @@
-function Write-IISMWarning
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [string]
-        $Message
-    )
-
-    Write-Host $Message -ForegroundColor Yellow
-}
-
 function Test-IsUnix
 {
     return $PSVersionTable.Platform -ieq 'unix'
@@ -22,15 +11,24 @@ function Invoke-IISMAppCommand
         $Arguments,
 
         [switch]
-        $NoParse
+        $NoParse,
+
+        [switch]
+        $NoError
     )
 
     if ($NoParse) {
-        return (Invoke-Expression -Command "$(Get-IISMAppCmdPath) $Arguments")
+        $result = (Invoke-Expression -Command "$(Get-IISMAppCmdPath) $Arguments")
     }
     else {
-        return ([xml](Invoke-Expression -Command "$(Get-IISMAppCmdPath) $Arguments /xml /config")).appcmd
+        $result = ([xml](Invoke-Expression -Command "$(Get-IISMAppCmdPath) $Arguments /xml /config")).appcmd
     }
+
+    if ($LASTEXITCODE -ne 0 -and !$NoError) {
+        throw "Failed to run appcmd: $($result)"
+    }
+
+    return $result
 }
 
 function Invoke-IISMNetshCommand
@@ -38,10 +36,19 @@ function Invoke-IISMNetshCommand
     param (
         [Parameter(Mandatory=$true)]
         [string]
-        $Arguments
+        $Arguments,
+
+        [switch]
+        $NoError
     )
 
-    return (Invoke-Expression -Command "$(Get-IISMNetshPath) $Arguments")
+    $result = (Invoke-Expression -Command "$(Get-IISMNetshPath) $Arguments")
+
+    if ($LASTEXITCODE -ne 0 -and !$NoError) {
+        throw "Failed to run netsh: $($result)"
+    }
+
+    return $result
 }
 
 function Invoke-IISMNetCommand
@@ -49,10 +56,39 @@ function Invoke-IISMNetCommand
     param (
         [Parameter(Mandatory=$true)]
         [string]
-        $Arguments
+        $Arguments,
+
+        [switch]
+        $NoError
     )
 
-    return (Invoke-Expression -Command "$(Get-IISMNetPath) $Arguments")
+    $result = (Invoke-Expression -Command "$(Get-IISMNetPath) $Arguments 2>&1")
+
+    if ($LASTEXITCODE -ne 0 -and !$NoError) {
+        throw "Failed to run net: $($result)"
+    }
+
+    return $result
+}
+
+function Invoke-IISMResetCommand
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Arguments,
+
+        [switch]
+        $NoError
+    )
+
+    $result = (Invoke-Expression -Command "$(Get-IISMResetPath) $Arguments")
+
+    if ($LASTEXITCODE -ne 0 -and !$NoError) {
+        throw "Failed to run iisreset: $($result)"
+    }
+
+    return $result
 }
 
 function Get-IISMSiteBindingInformation
@@ -167,7 +203,7 @@ function Wait-IISMBackgroundTask
         Start-Sleep -Milliseconds 500
     }
 
-    throw 'Object not created in time'
+    throw 'Resource not created in time'
 }
 
 function Add-IISMSlash

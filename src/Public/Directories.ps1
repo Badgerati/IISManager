@@ -19,10 +19,10 @@ function Get-IISMDirectories
 
     # get either one dir, or all dirs
     if (![string]::IsNullOrWhiteSpace($SiteName)) {
-        $result = Invoke-IISMAppCommand -Arguments "list vdir '$($Name)'"
+        $result = Invoke-IISMAppCommand -Arguments "list vdir '$($Name)'" -NoError
     }
     else {
-        $result = Invoke-IISMAppCommand -Arguments 'list vdirs'
+        $result = Invoke-IISMAppCommand -Arguments 'list vdirs' -NoError
     }
 
     # just return if there are no results
@@ -89,9 +89,12 @@ function New-IISMDirectory
         [string]
         $AppName = '/',
 
-        [Parameter()]
+        [Parameter(Mandatory=$true)]
         [string]
-        $PhysicalPath
+        $PhysicalPath,
+
+        [switch]
+        $CreatePath
     )
 
     $AppName = Add-IISMSlash -Value $AppName
@@ -106,6 +109,11 @@ function New-IISMDirectory
     # error if the app doesn't exist
     if (!(Test-IISMApp -SiteName $SiteName -Name $AppName)) {
         throw "Application '$($FullAppName)' does not exist in IIS"
+    }
+
+    # if create flag passed, make the path
+    if ($CreatePath -and !(Test-Path $PhysicalPath)) {
+        New-Item -Path $PhysicalPath -ItemType Directory -Force | Out-Null
     }
 
     # create the directory
@@ -196,30 +204,112 @@ function Set-IISMDirectoryShare
         [string]
         $AppName = '/',
 
-        [Parameter(Mandatory=$true)]
-        [string]
-        $Path,
-
         [Parameter()]
         [string]
         $Permission = 'Everyone,FULL'
     )
 
-    # error if the path doesn't exist
-    if (!(Test-Path $Path)) {
-        throw "The path for sharing does not exist: $($Path)"
+    $AppName = Add-IISMSlash -Value $AppName
+
+    # error if the site doesn't exist
+    if (!(Test-IISMSite -Name $SiteName)) {
+        throw "Website '$($SiteName)' does not exist in IIS"
     }
+
+    # error if the app doesn't exist
+    if (!(Test-IISMApp -SiteName $SiteName -Name $AppName)) {
+        throw "Application '$($SiteName)$($AppName)' does not exist in IIS"
+    }
+
+    # get the physical path for the site/app
+    $path = Get-IISMSitePhysicalPath -Name $SiteName -AppName $AppName
+
+    # error if the path doesn't exist
+    if ([string]::IsNullOrWhiteSpace($path) -or !(Test-Path $path)) {
+        throw "The path for sharing does not exist: $($path)"
+    }
+
+    # make the share name
+    $ShareName = ("$($SiteName)$($AppName)".Trim('\/') -replace '[\\/]', '.')
+
+    # if the share exists, remove it
+    Remove-IISMDirectoryShare -SiteName $SiteName -AppName $AppName
+
+    # create the share
+    Invoke-IISMNetCommand -Arguments "share $($ShareName)=$($path) /grant:`"$($Permission)`"" | Out-Null
+
+    # return the share details
+    return (Get-IISMDirectoryShare -SiteName $SiteName -AppName $AppName)
+}
+
+function Remove-IISMDirectoryShare
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $SiteName,
+
+        [Parameter()]
+        [string]
+        $AppName = '/'
+    )
 
     # make the share name
     $AppName = Add-IISMSlash -Value $AppName
     $ShareName = ("$($SiteName)$($AppName)".Trim('\/') -replace '[\\/]', '.')
 
     # if the share exists, remove it
-    $shares = (Invoke-IISMNetCommand -Arguments "share")
-    if (($shares | Where-Object { $_ -ilike "$($ShareName)*" } | Measure-Object).Count -gt 0) {
-        Invoke-IISMNetCommand -Arguments "share $($ShareName) /delete /y 2>&1>null" | Out-Null
+    if (Test-IISMDirectoryShare -SiteName $SiteName -AppName $AppName) {
+        Invoke-IISMNetCommand -Arguments "share $($ShareName) /delete /y" | Out-Null
+    }
+}
+
+function Test-IISMDirectoryShare
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $SiteName,
+
+        [Parameter()]
+        [string]
+        $AppName = '/'
+    )
+
+    return ($null -ne (Get-IISMDirectoryShare -SiteName $SiteName -AppName $AppName))
+}
+
+function Get-IISMDirectoryShare
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $SiteName,
+
+        [Parameter()]
+        [string]
+        $AppName = '/'
+    )
+
+    # make the share name
+    $AppName = Add-IISMSlash -Value $AppName
+    $ShareName = ("$($SiteName)$($AppName)".Trim('\/') -replace '[\\/]', '.')
+
+    # check if the share exists
+    $share = (Invoke-IISMNetCommand -Arguments "share $($ShareName)" -NoError)
+    if (($LASTEXITCODE -ne 0) -or ($share -ilike '*does not exist*')) {
+        return $null
     }
 
-    # create the share
-    Invoke-IISMNetCommand -Arguments "share $($ShareName)=$($Path) /grant:`"$($Permission)`" 2>&1>null" | Out-Null
+    # if it exists, parse the data
+    $obj = New-Object -TypeName psobject
+    $culture = (Get-Culture).TextInfo
+
+    @($share -imatch '\s{2,}') | ForEach-Object {
+        $atoms = $_ -split '\s{2,}'
+        $name = ($culture.ToTitleCase($atoms[0]) -ireplace '\s+', '')
+        $obj | Add-Member -MemberType NoteProperty -Name $name -Value $atoms[1]
+    }
+
+    return $obj
 }

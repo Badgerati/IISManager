@@ -7,10 +7,10 @@ function Get-IISMAppPools
     )
 
     if (![string]::IsNullOrWhiteSpace($Name)) {
-        $result = Invoke-IISMAppCommand -Arguments "list apppool '$($Name)'"
+        $result = Invoke-IISMAppCommand -Arguments "list apppool '$($Name)'" -NoError
     }
     else {
-        $result = Invoke-IISMAppCommand -Arguments 'list apppools'
+        $result = Invoke-IISMAppCommand -Arguments 'list apppools' -NoError
     }
 
     if ($null -eq $result) {
@@ -81,7 +81,7 @@ function Restart-IISMAppPool
         [string]
         $Name
     )
-    
+
     Stop-IISMAppPool -Name $Name | Out-Null
     Start-IISMAppPool -Name $Name | Out-Null
     return (Get-IISMAppPools -Name $Name)
@@ -101,6 +101,17 @@ function Reset-IISMAppPool
 
     Invoke-IISMAppCommand -Arguments "recycle apppool '$($Name)'" -NoParse | Out-Null
     return (Get-IISMAppPools -Name $Name)
+}
+
+function Reset-IISMServer
+{
+    param (
+        [Parameter()]
+        [string]
+        $ComputerName
+    )
+
+    Invoke-IISMResetCommand -Arguments "$($ComputerName)" | Out-Null
 }
 
 function Remove-IISMAppPool

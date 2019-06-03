@@ -22,3 +22,8 @@ function Get-IISMNetPath
 {
     return (Join-Path (Get-IISMHomePath) 'net.exe')
 }
+
+function Get-IISMResetPath
+{
+    return (Join-Path (Get-IISMHomePath) 'iisreset.exe')
+}

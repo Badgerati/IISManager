@@ -12,10 +12,10 @@ function Get-IISMSites
 
     # get either one site, or all sites
     if (![string]::IsNullOrWhiteSpace($Name)) {
-        $result = Invoke-IISMAppCommand -Arguments "list site '$($Name)'"
+        $result = Invoke-IISMAppCommand -Arguments "list site '$($Name)'" -NoError
     }
     else {
-        $result = Invoke-IISMAppCommand -Arguments 'list sites'
+        $result = Invoke-IISMAppCommand -Arguments 'list sites' -NoError
     }
 
     # just return if there are no results
@@ -146,7 +146,10 @@ function Edit-IISMSitePhysicalPath
 
         [Parameter(Mandatory=$true)]
         [string]
-        $PhysicalPath
+        $PhysicalPath,
+
+        [switch]
+        $CreatePath
     )
 
     $AppName = Add-IISMSlash -Value $AppName
@@ -163,6 +166,11 @@ function Edit-IISMSitePhysicalPath
     $app = ($site.Apps | Where-Object { $_.Path -ieq $AppName })
     if ($null -eq $app) {
         throw "The app '$($AppName)' does not exist against the website '$($Name)' in IIS"
+    }
+
+    # if create flag passed, make the path
+    if ($CreatePath -and !(Test-Path $PhysicalPath)) {
+        New-Item -Path $PhysicalPath -ItemType Directory -Force | Out-Null
     }
 
     # update the physical path
@@ -220,6 +228,17 @@ function Remove-IISMSiteBinding
     $binding = Get-IISMBindingCommandString -Protocol $Protocol -Port $Port -IPAddress $IPAddress -Hostname $Hostname
     Invoke-IISMAppCommand -Arguments "set site '$($Name)' /-`"$($binding)`"" -NoParse | Out-Null
     return (Get-IISMSiteBindings -Name $Name)
+}
+
+function Remove-IISMSiteDefaultBinding
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name
+    )
+
+    return (Remove-IISMSiteBinding -Name $Name -Protocol http -Port 80 -IPAddress '*')
 }
 
 function Add-IISMSiteBinding
@@ -332,7 +351,10 @@ function New-IISMSite
 
         [Parameter()]
         [string]
-        $CertificateThumbprint
+        $CertificateThumbprint,
+
+        [switch]
+        $CreatePath
     )
 
     # if no app-pool name, set to the site name
@@ -348,6 +370,11 @@ function New-IISMSite
     # if the app-pool doesn't exist, create a default one
     if (!(Test-IISMAppPool -Name $AppPoolName)) {
         New-IISMAppPool -Name $AppPoolName | Out-Null
+    }
+
+    # if create flag passed, make the path
+    if ($CreatePath -and !(Test-Path $PhysicalPath)) {
+        New-Item -Path $PhysicalPath -ItemType Directory -Force | Out-Null
     }
 
     # create the site in IIS
@@ -402,13 +429,13 @@ function Set-IISMSiteBindingCertificate
     # bind cert using hostname
     if (![string]::IsNullOrWhiteSpace($Hostname)) {
         $addr = "$($Hostname):$($Port)"
-        $result = (Invoke-IISMNetshCommand -Arguments "http add sslcert hostnameport=$($addr) certhash=$($CertificateThumbprint) certstorename=MY appid='$($appId)'")
+        $result = (Invoke-IISMNetshCommand -Arguments "http add sslcert hostnameport=$($addr) certhash=$($CertificateThumbprint) certstorename=MY appid='$($appId)'" -NoError)
     }
 
     # else, bind using IP address
     else {
         $addr = "$($IPAddress):$($Port)"
-        $result = (Invoke-IISMNetshCommand -Arguments "http add sslcert ipport=$($addr) certhash=$($CertificateThumbprint) appid='$($appId)'")
+        $result = (Invoke-IISMNetshCommand -Arguments "http add sslcert ipport=$($addr) certhash=$($CertificateThumbprint) appid='$($appId)'" -NoError)
     }
 
     if ($LASTEXITCODE -ne 0 -or !$?) {
@@ -445,13 +472,13 @@ function Remove-IISMSiteBindingCertificate
     # delete cert using hostname
     if (![string]::IsNullOrWhiteSpace($Hostname)) {
         $addr = "$($Hostname):$($Port)"
-        $result = (Invoke-IISMNetshCommand -Arguments "http delete sslcert hostnameport=$($addr)")
+        $result = (Invoke-IISMNetshCommand -Arguments "http delete sslcert hostnameport=$($addr)" -NoError)
     }
 
     # else, delete using IP address
     else {
         $addr = "$($IPAddress):$($Port)"
-        $result = (Invoke-IISMNetshCommand -Arguments "http add sslcert ipport=$($addr)")
+        $result = (Invoke-IISMNetshCommand -Arguments "http add sslcert ipport=$($addr)" -NoError)
     }
 
     if ($LASTEXITCODE -ne 0 -or !$?) {
@@ -495,11 +522,11 @@ function Get-IISMSiteBindingCertificate
     )
 
     # get netsh details by ip address
-    $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert ipport=$($IPAddress):$($Port)")
+    $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert ipport=$($IPAddress):$($Port)" -NoError)
 
     # if that threw an error, and we have a hostname, check that
     if ($LASTEXITCODE -ne 0 -and ![string]::IsNullOrWhiteSpace($Hostname)) {
-        $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert hostnameport=$($Hostname):$($Port)")
+        $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert hostnameport=$($Hostname):$($Port)" -NoError)
     }
 
     # get the thumbprint from the output
