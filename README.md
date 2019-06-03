@@ -15,6 +15,7 @@ Feel free to contribute.
 
 ```powershell
 Install-Module -Name IISManager
+Import-Module -Name IISManager
 ```
 
 ## Functions
