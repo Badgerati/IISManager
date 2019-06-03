@@ -11,7 +11,7 @@
     RootModule = 'IISManager.psm1'
 
     # Version number of this module.
-    ModuleVersion = '$version$'
+    ModuleVersion = '1.0.0'
 
     # ID used to uniquely identify this module
     GUID = 'a3ba417c-dc1d-446b-95a5-a306ab26c1af'
@@ -28,6 +28,9 @@
     # Minimum version of the Windows PowerShell engine required by this module
     PowerShellVersion = '3.0'
 
+    # Functions to export from this Module
+    FunctionsToExport = '*'
+
     # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
     PrivateData = @{
         PSData = @{
@@ -43,7 +46,7 @@
             ProjectUri = 'https://github.com/Badgerati/IISManager'
 
             # Release notes for this particular version of the module
-            ReleaseNotes = 'https://github.com/Badgerati/IISManager/releases/tag/v$version$'
+            ReleaseNotes = 'https://github.com/Badgerati/IISManager/releases/tag/v1.0.0'
 
         }
     }
