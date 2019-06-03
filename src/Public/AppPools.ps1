@@ -2,6 +2,7 @@ function Get-IISMAppPools
 {
     param (
         [Parameter()]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -24,6 +25,7 @@ function Test-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -35,6 +37,7 @@ function Test-IISMAppPoolRunning
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -46,6 +49,7 @@ function Stop-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -62,6 +66,7 @@ function Start-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -78,6 +83,7 @@ function Restart-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -91,6 +97,7 @@ function Reset-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -107,6 +114,7 @@ function Reset-IISMServer
 {
     param (
         [Parameter()]
+        [Alias('cn')]
         [string]
         $ComputerName
     )
@@ -118,6 +126,7 @@ function Remove-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -134,6 +143,7 @@ function New-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name,
 
@@ -169,6 +179,7 @@ function Update-IISMAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name,
 
@@ -215,6 +226,7 @@ function Update-IISMAppPoolProcessModel
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name,
 
@@ -296,6 +308,7 @@ function Update-IISMAppPoolRecycling
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name,
 

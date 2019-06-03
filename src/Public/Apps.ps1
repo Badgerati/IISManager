@@ -2,10 +2,12 @@ function Get-IISMApps
 {
     param (
         [Parameter()]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -33,10 +35,12 @@ function Test-IISMApp
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('n')]
         [string]
         $Name = '/'
     )
@@ -48,10 +52,12 @@ function Remove-IISMApp
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('n')]
         [string]
         $Name = '/'
     )
@@ -69,18 +75,22 @@ function New-IISMApp
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('n')]
         [string]
         $Name = '/',
 
         [Parameter(Mandatory=$true)]
+        [Alias('p')]
         [string]
         $PhysicalPath,
 
         [Parameter()]
+        [Alias('apn')]
         [string]
         $AppPoolName
     )
@@ -109,18 +119,22 @@ function Update-IISMApp
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('n')]
         [string]
         $Name = '/',
 
         [Parameter()]
+        [Alias('p')]
         [string]
         $PhysicalPath,
 
         [Parameter()]
+        [Alias('apn')]
         [string]
         $AppPoolName
     )

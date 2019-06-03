@@ -2,10 +2,12 @@ function Get-IISMSites
 {
     param (
         [Parameter()]
+        [Alias('n')]
         [string]
         $Name,
 
         [Parameter()]
+        [Alias('p')]
         [string]
         $PhysicalPath
     )
@@ -42,6 +44,7 @@ function Test-IISMSite
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -53,6 +56,7 @@ function Test-IISMSiteRunning
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -79,6 +83,7 @@ function Start-IISMSite
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -94,6 +99,7 @@ function Restart-IISMSite
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -118,10 +124,12 @@ function Get-IISMSitePhysicalPath
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name,
 
         [Parameter()]
+        [Alias('an')]
         [string]
         $AppName = '/'
     )
@@ -133,18 +141,42 @@ function Get-IISMSitePhysicalPath
     } | Select-Object -First 1).Directory.PhysicalPath
 }
 
-function Edit-IISMSitePhysicalPath
+function Get-IISMSiteAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name,
 
         [Parameter()]
+        [Alias('an')]
+        [string]
+        $AppName = '/'
+    )
+
+    $AppName = Add-IISMSlash -Value $AppName
+
+    return ((Get-IISMSites -Name $Name).Apps | Where-Object {
+        $_.Path -ieq $AppName
+    } | Select-Object -First 1).AppPool.Name
+}
+
+function Edit-IISMSitePhysicalPath
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [Alias('n')]
+        [string]
+        $Name,
+
+        [Parameter()]
+        [Alias('an')]
         [string]
         $AppName = '/',
 
         [Parameter(Mandatory=$true)]
+        [Alias('p')]
         [string]
         $PhysicalPath,
 
@@ -184,6 +216,7 @@ function Remove-IISMSite
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -199,6 +232,7 @@ function Remove-IISMSiteBinding
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name,
 
@@ -212,6 +246,7 @@ function Remove-IISMSiteBinding
         $Port,
 
         [Parameter()]
+        [Alias('ip')]
         [string]
         $IPAddress,
 
@@ -234,6 +269,7 @@ function Remove-IISMSiteDefaultBinding
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name
     )
@@ -245,6 +281,7 @@ function Add-IISMSiteBinding
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name,
 
@@ -258,6 +295,7 @@ function Add-IISMSiteBinding
         $Port,
 
         [Parameter()]
+        [Alias('ip')]
         [string]
         $IPAddress,
 
@@ -280,14 +318,17 @@ function Edit-IISMSiteAppPool
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name,
 
         [Parameter()]
+        [Alias('an')]
         [string]
         $AppName ='/',
 
         [Parameter(Mandatory=$true)]
+        [Alias('apn')]
         [string]
         $AppPoolName
     )
@@ -321,14 +362,17 @@ function New-IISMSite
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('n')]
         [string]
         $Name,
 
         [Parameter()]
+        [Alias('apn')]
         [string]
         $AppPoolName,
 
         [Parameter(Mandatory=$true)]
+        [Alias('p')]
         [string]
         $PhysicalPath,
 
@@ -342,6 +386,7 @@ function New-IISMSite
         $Port,
 
         [Parameter()]
+        [Alias('ip')]
         [string]
         $IPAddress,
 
@@ -406,6 +451,7 @@ function Set-IISMSiteBindingCertificate
         $Port,
 
         [Parameter()]
+        [Alias('ip')]
         [string]
         $IPAddress,
 
@@ -451,6 +497,7 @@ function Remove-IISMSiteBindingCertificate
         $Port,
 
         [Parameter()]
+        [Alias('ip')]
         [string]
         $IPAddress,
 
@@ -494,6 +541,7 @@ function Test-IISMSiteBindingCertificate
         $Port,
 
         [Parameter()]
+        [Alias('ip')]
         [string]
         $IPAddress,
 
@@ -513,6 +561,7 @@ function Get-IISMSiteBindingCertificate
         $Port,
 
         [Parameter()]
+        [Alias('ip')]
         [string]
         $IPAddress,
 

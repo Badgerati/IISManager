@@ -38,10 +38,10 @@ NOTE: This is a work in progress, so there will be bugs/changes. This will be on
 
 * Get-IISMDirectories
 * Get-IISMDirectoryShare
+* Mount-IISMDirectoryShare
 * New-IISMDirectory
 * Remove-IISMDirectory
 * Remove-IISMDirectoryShare
-* Set-IISMDirectoryShare
 * Test-IISMDirectory
 * Test-IISMDirectoryShare
 * Update-IISMDirectory
@@ -52,6 +52,7 @@ NOTE: This is a work in progress, so there will be bugs/changes. This will be on
 * Add-IISMSiteBinding
 * Edit-IISMSiteAppPool
 * Edit-IISMSitePhysicalPath
+* Get-IISMSiteAppPool
 * Get-IISMSiteBindingCertificate
 * Get-IISMSiteBindings
 * Get-IISMSitePhysicalPath

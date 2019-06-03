@@ -2,14 +2,17 @@ function Get-IISMDirectories
 {
     param (
         [Parameter()]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('an')]
         [string]
         $AppName,
 
         [Parameter()]
+        [Alias('p')]
         [string]
         $PhysicalPath
     )
@@ -44,10 +47,12 @@ function Test-IISMDirectory
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('an')]
         [string]
         $AppName = '/'
     )
@@ -60,10 +65,12 @@ function Remove-IISMDirectory
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('an')]
         [string]
         $AppName = '/'
     )
@@ -82,14 +89,17 @@ function New-IISMDirectory
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('an')]
         [string]
         $AppName = '/',
 
         [Parameter(Mandatory=$true)]
+        [Alias('p')]
         [string]
         $PhysicalPath,
 
@@ -130,14 +140,17 @@ function Update-IISMDirectory
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('an')]
         [string]
         $AppName = '/',
 
         [Parameter()]
+        [Alias('p')]
         [string]
         $PhysicalPath
     )
@@ -193,14 +206,16 @@ function Update-IISMDirectoryPhysicalPaths
     return (Get-IISMDirectories -PhysicalPath $To)
 }
 
-function Set-IISMDirectoryShare
+function Mount-IISMDirectoryShare
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('an')]
         [string]
         $AppName = '/',
 
@@ -246,10 +261,12 @@ function Remove-IISMDirectoryShare
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('an')]
         [string]
         $AppName = '/'
     )
@@ -268,10 +285,12 @@ function Test-IISMDirectoryShare
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('an')]
         [string]
         $AppName = '/'
     )
@@ -283,10 +302,12 @@ function Get-IISMDirectoryShare
 {
     param (
         [Parameter(Mandatory=$true)]
+        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
+        [Alias('an')]
         [string]
         $AppName = '/'
     )
