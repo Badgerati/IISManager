@@ -26,7 +26,6 @@ Import-Module -Name IISManager
 * New-IISMAppPool
 * Remove-IISMAppPool
 * Reset-IISMAppPool
-* Reset-IISMServer
 * Restart-IISMAppPool
 * Start-IISMAppPool
 * Stop-IISMAppPool
@@ -81,3 +80,13 @@ Import-Module -Name IISManager
 * Test-IISMSiteBinding
 * Test-IISMSiteBindingCertificate
 * Test-IISMSiteRunning
+
+### Misc
+
+* Get-IISMCertificateThumbprint
+* Reset-IISMServer
+
+## ToDo
+
+* Hosts file control
+* Folder permissions via ACL
