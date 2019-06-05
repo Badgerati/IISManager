@@ -110,18 +110,6 @@ function Reset-IISMAppPool
     return (Get-IISMAppPools -Name $Name)
 }
 
-function Reset-IISMServer
-{
-    param (
-        [Parameter()]
-        [Alias('cn')]
-        [string]
-        $ComputerName
-    )
-
-    Invoke-IISMResetCommand -Arguments "$($ComputerName)" | Out-Null
-}
-
 function Remove-IISMAppPool
 {
     param (

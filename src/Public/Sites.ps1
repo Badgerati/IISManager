@@ -467,28 +467,6 @@ function New-IISMSite
         [string]
         $PhysicalPath,
 
-        [Parameter(Mandatory=$true)]
-        [ValidateSet('ftp', 'http', 'https', 'msmq.formatname', 'net.msmq', 'net.pipe', 'net.tcp')]
-        [string]
-        $Protocol,
-
-        [Parameter()]
-        [int]
-        $Port,
-
-        [Parameter()]
-        [Alias('ip')]
-        [string]
-        $IPAddress,
-
-        [Parameter()]
-        [string]
-        $Hostname,
-
-        [Parameter()]
-        [string]
-        $CertificateThumbprint,
-
         [switch]
         $CreatePath
     )
@@ -514,17 +492,12 @@ function New-IISMSite
     }
 
     # create the site in IIS
-    $_args = "/name:'$($Name)' /physicalPath:'$($PhysicalPath)' /bindings:$($Protocol)/$($IPAddress):$($Port):$($Hostname)"
+    $_args = "/name:'$($Name)' /physicalPath:'$($PhysicalPath)'"
     Invoke-IISMAppCommand -Arguments "add site $($_args)" -NoParse | Out-Null
 
     # bind the app-pool to the site's default app
     Update-IISMSiteAppPool -Name $Name -App '/' -AppPoolName $AppPoolName | Out-Null
     Wait-IISMBackgroundTask -ScriptBlock { Test-IISMSite -Name $Name }
-
-    # if https, bind a certificate if thumbprint supplied
-    if ($Protocol -ieq 'https' -and ![string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
-        Set-IISMSiteBindingCertificate -CertificateThumbprint $CertificateThumbprint -Port $Port -IPAddress $IPAddress -Hostname $Hostname
-    }
 
     # return the site
     return (Get-IISMSites -Name $Name)
