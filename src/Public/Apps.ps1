@@ -1,5 +1,6 @@
 function Get-IISMApps
 {
+    [CmdletBinding()]
     param (
         [Parameter()]
         [Alias('sn')]
@@ -33,6 +34,7 @@ function Get-IISMApps
 
 function Test-IISMApp
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('sn')]
@@ -50,6 +52,7 @@ function Test-IISMApp
 
 function Remove-IISMApp
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('sn')]
@@ -73,6 +76,7 @@ function Remove-IISMApp
 
 function New-IISMApp
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('sn')]
@@ -117,6 +121,7 @@ function New-IISMApp
 
 function Update-IISMApp
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('sn')]

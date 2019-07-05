@@ -64,6 +64,7 @@ Import-Module -Name IISManager
 * Get-IISMSiteAppPool
 * Get-IISMSiteBindingCertificate
 * Get-IISMSiteBindings
+* Get-IISMSiteLogPath
 * Get-IISMSitePhysicalPath
 * Get-IISMSites
 * New-IISMSite

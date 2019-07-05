@@ -97,6 +97,7 @@ function Start-IISMSite
 
 function Restart-IISMSite
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -111,6 +112,7 @@ function Restart-IISMSite
 
 function Get-IISMSiteBindings
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [string]
@@ -120,8 +122,22 @@ function Get-IISMSiteBindings
     return (Get-IISMSites -Name $Name).Bindings
 }
 
+function Get-IISMSiteLogPath
+{
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name
+    )
+
+    $site = (Get-IISMSites -Name $Name)
+    return (Join-Path $site.LogFile "W3SVC$($site.ID)")
+}
+
 function Get-IISMSitePhysicalPath
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -143,6 +159,7 @@ function Get-IISMSitePhysicalPath
 
 function Get-IISMSiteAppPool
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -164,6 +181,7 @@ function Get-IISMSiteAppPool
 
 function Edit-IISMSitePhysicalPath
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -214,6 +232,7 @@ function Edit-IISMSitePhysicalPath
 
 function Remove-IISMSite
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -234,6 +253,7 @@ function Remove-IISMSite
 
 function Test-IISMSiteBinding
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -277,6 +297,7 @@ function Test-IISMSiteBinding
 
 function Remove-IISMSiteBindings
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -297,6 +318,7 @@ function Remove-IISMSiteBindings
 
 function Remove-IISMSiteBinding
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -344,6 +366,7 @@ function Remove-IISMSiteBinding
 
 function Remove-IISMSiteDefaultBinding
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -407,6 +430,7 @@ function Add-IISMSiteBinding
 
 function Edit-IISMSiteAppPool
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -451,6 +475,7 @@ function Edit-IISMSiteAppPool
 
 function New-IISMSite
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -505,6 +530,7 @@ function New-IISMSite
 
 function Set-IISMSiteBindingCertificate
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [string]
@@ -555,6 +581,7 @@ function Set-IISMSiteBindingCertificate
 
 function Remove-IISMSiteBindingCertificate
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [int]
@@ -599,6 +626,7 @@ function Remove-IISMSiteBindingCertificate
 
 function Test-IISMSiteBindingCertificate
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [int]
@@ -619,6 +647,7 @@ function Test-IISMSiteBindingCertificate
 
 function Get-IISMSiteBindingCertificate
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [int]

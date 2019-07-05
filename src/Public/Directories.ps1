@@ -1,5 +1,6 @@
 function Get-IISMDirectories
 {
+    [CmdletBinding()]
     param (
         [Parameter()]
         [Alias('sn')]
@@ -45,6 +46,7 @@ function Get-IISMDirectories
 
 function Test-IISMDirectory
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('sn')]
@@ -63,6 +65,7 @@ function Test-IISMDirectory
 
 function Remove-IISMDirectory
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('sn')]
@@ -87,6 +90,7 @@ function Remove-IISMDirectory
 
 function New-IISMDirectory
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('sn')]
@@ -138,6 +142,7 @@ function New-IISMDirectory
 
 function Update-IISMDirectory
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('sn')]
@@ -174,6 +179,7 @@ function Update-IISMDirectory
 
 function Update-IISMDirectoryPhysicalPaths
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [string]
@@ -208,6 +214,7 @@ function Update-IISMDirectoryPhysicalPaths
 
 function Mount-IISMDirectoryShare
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('sn')]
@@ -259,6 +266,7 @@ function Mount-IISMDirectoryShare
 
 function Remove-IISMDirectoryShare
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('sn')]
@@ -283,6 +291,7 @@ function Remove-IISMDirectoryShare
 
 function Test-IISMDirectoryShare
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('sn')]
@@ -300,6 +309,7 @@ function Test-IISMDirectoryShare
 
 function Get-IISMDirectoryShare
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('sn')]

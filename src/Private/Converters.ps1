@@ -12,14 +12,20 @@ function ConvertTo-IISMSiteObject
 
     foreach ($site in $Sites) {
         $_apps = @()
+        # get app info
         $Apps | Where-Object { $_.SiteName -ieq $site.'SITE.NAME' } | ForEach-Object {
             $_apps += $_
         }
 
+        # get binding info
         $_bindings = @($site.site.bindings.binding | ForEach-Object {
             Get-IISMSiteBindingInformation -Binding $_
         })
 
+        # default values
+        $logFile = (Protect-IISMValue $site.site.logFile.directory "$($env:SystemDrive)/inetpub/logs/LogFiles")
+
+        # build site object
         $obj = (New-Object -TypeName psobject |
             Add-Member -MemberType NoteProperty -Name ID -Value $site.'SITE.ID' -PassThru |
             Add-Member -MemberType NoteProperty -Name Name -Value $site.'SITE.NAME' -PassThru |
@@ -27,7 +33,7 @@ function ConvertTo-IISMSiteObject
             Add-Member -MemberType NoteProperty -Name State -Value $site.state -PassThru |
             Add-Member -MemberType NoteProperty -Name Apps -Value $_apps -PassThru |
             Add-Member -MemberType NoteProperty -Name Limits -Value $null -PassThru |
-            Add-Member -MemberType NoteProperty -Name LogFile -Value $null -PassThru |
+            Add-Member -MemberType NoteProperty -Name LogFile -Value $logFile -PassThru |
             Add-Member -MemberType NoteProperty -Name TraceFailedRequestsLogging -Value $null -PassThru |
             Add-Member -MemberType NoteProperty -Name Hsts -Value $null -PassThru |
             Add-Member -MemberType NoteProperty -Name ApplicationDefaults -Value $null -PassThru |
