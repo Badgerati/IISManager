@@ -237,3 +237,20 @@ function Add-IISMSlash
 
     return $Value
 }
+
+function Protect-IISMValue
+{
+    param (
+        [Parameter()]
+        $Value1,
+
+        [Parameter()]
+        $Value2
+    )
+
+    if (($null -eq $Value1) -or [string]::IsNullOrWhiteSpace($Value1)) {
+        return $Value2
+    }
+
+    return $Value1
+}

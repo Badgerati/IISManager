@@ -12,22 +12,29 @@ function ConvertTo-IISMSiteObject
 
     foreach ($site in $Sites) {
         $_apps = @()
-        $Apps | Where-Object { $_.SiteName -ieq $site.'SITE.NAME' } | ForEach-Object {
+
+        # get app info
+        $Apps | Where-Object { $_.SiteName -ieq $site.site.name } | ForEach-Object {
             $_apps += $_
         }
 
+        # get binding info
         $_bindings = @($site.site.bindings.binding | ForEach-Object {
             Get-IISMSiteBindingInformation -Binding $_
         })
 
+        # get logging info
+        $_logging = Get-IISMSiteLogging -Name $site.site.name
+
+        # build site object
         $obj = (New-Object -TypeName psobject |
-            Add-Member -MemberType NoteProperty -Name ID -Value $site.'SITE.ID' -PassThru |
-            Add-Member -MemberType NoteProperty -Name Name -Value $site.'SITE.NAME' -PassThru |
+            Add-Member -MemberType NoteProperty -Name ID -Value $site.site.id -PassThru |
+            Add-Member -MemberType NoteProperty -Name Name -Value $site.site.name -PassThru |
             Add-Member -MemberType NoteProperty -Name Bindings -Value @($_bindings) -PassThru |
             Add-Member -MemberType NoteProperty -Name State -Value $site.state -PassThru |
             Add-Member -MemberType NoteProperty -Name Apps -Value $_apps -PassThru |
             Add-Member -MemberType NoteProperty -Name Limits -Value $null -PassThru |
-            Add-Member -MemberType NoteProperty -Name LogFile -Value $null -PassThru |
+            Add-Member -MemberType NoteProperty -Name Logging -Value $_logging -PassThru |
             Add-Member -MemberType NoteProperty -Name TraceFailedRequestsLogging -Value $null -PassThru |
             Add-Member -MemberType NoteProperty -Name Hsts -Value $null -PassThru |
             Add-Member -MemberType NoteProperty -Name ApplicationDefaults -Value $null -PassThru |
@@ -37,6 +44,52 @@ function ConvertTo-IISMSiteObject
     }
 
     return $mapped
+}
+
+function ConvertTo-IISMSiteCustomLogFieldObject
+{
+    param (
+        [Parameter()]
+        $Fields
+    )
+
+    $mapped = @()
+
+    foreach ($field in $Fields) {
+        $obj = (New-Object -TypeName psobject |
+            Add-Member -MemberType NoteProperty -Name Name -Value $field.logFieldName -PassThru |
+            Add-Member -MemberType NoteProperty -Name Source -Value $field.sourceName -PassThru |
+            Add-Member -MemberType NoteProperty -Name Type -Value $field.sourceType -PassThru)
+
+        $mapped +=  $obj
+    }
+
+    return $mapped
+}
+
+function ConvertTo-IISMSiteLoggingObject
+{
+    param (
+        [Parameter()]
+        $Fields,
+
+        [Parameter()]
+        $CustomFields,
+
+        [Parameter()]
+        $Format,
+
+        [Parameter()]
+        $Path
+    )
+
+    $obj = (New-Object -TypeName psobject |
+        Add-Member -MemberType NoteProperty -Name Fields -Value $Fields -PassThru |
+        Add-Member -MemberType NoteProperty -Name CustomFields -Value $CustomFields -PassThru |
+        Add-Member -MemberType NoteProperty -Name Format -Value $Format -PassThru |
+        Add-Member -MemberType NoteProperty -Name Path -Value $Path -PassThru)
+
+    return $obj
 }
 
 function ConvertTo-IISMAppPoolObject

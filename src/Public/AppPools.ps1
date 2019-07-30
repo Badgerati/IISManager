@@ -1,5 +1,6 @@
 function Get-IISMAppPools
 {
+    [CmdletBinding()]
     param (
         [Parameter()]
         [Alias('n')]
@@ -23,6 +24,7 @@ function Get-IISMAppPools
 
 function Test-IISMAppPool
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -35,6 +37,7 @@ function Test-IISMAppPool
 
 function Test-IISMAppPoolRunning
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -47,6 +50,7 @@ function Test-IISMAppPoolRunning
 
 function Stop-IISMAppPool
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -64,6 +68,7 @@ function Stop-IISMAppPool
 
 function Start-IISMAppPool
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -81,6 +86,7 @@ function Start-IISMAppPool
 
 function Restart-IISMAppPool
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -95,6 +101,7 @@ function Restart-IISMAppPool
 
 function Reset-IISMAppPool
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -112,6 +119,7 @@ function Reset-IISMAppPool
 
 function Remove-IISMAppPool
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -129,6 +137,7 @@ function Remove-IISMAppPool
 
 function New-IISMAppPool
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -165,6 +174,7 @@ function New-IISMAppPool
 
 function Update-IISMAppPool
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -212,6 +222,7 @@ function Update-IISMAppPool
 
 function Update-IISMAppPoolProcessModel
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]
@@ -294,6 +305,7 @@ function Update-IISMAppPoolProcessModel
 
 function Update-IISMAppPoolRecycling
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]

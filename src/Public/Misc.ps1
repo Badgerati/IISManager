@@ -1,5 +1,6 @@
 function Reset-IISMServer
 {
+    [CmdletBinding()]
     param (
         [Parameter()]
         [Alias('cn')]
@@ -12,6 +13,7 @@ function Reset-IISMServer
 
 function Get-IISMCertificateThumbprint
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [Alias('n')]

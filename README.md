@@ -81,6 +81,19 @@ Import-Module -Name IISManager
 * Test-IISMSiteBindingCertificate
 * Test-IISMSiteRunning
 
+#### Logging
+
+* Add-IISMSiteCustomLogField
+* Add-IISMSiteLogField
+* Get-IISMSiteCustomLogFields
+* Get-IISMSiteLogFields
+* Get-IISMSiteLogFormat
+* Get-IISMSiteLogging
+* Get-IISMSiteLogPath
+* Remove-IISMSiteCustomLogField
+* Remove-IISMSiteLogField
+* Set-IISMSiteLogFields
+
 ### Misc
 
 * Get-IISMCertificateThumbprint
