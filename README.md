@@ -22,7 +22,7 @@ Import-Module -Name IISManager
 
 ### Application Pools
 
-* Get-IISMAppPools
+* Get-IISMAppPool
 * New-IISMAppPool
 * Remove-IISMAppPool
 * Reset-IISMAppPool
@@ -37,7 +37,7 @@ Import-Module -Name IISManager
 
 ### Apps
 
-* Get-IISMApps
+* Get-IISMApp
 * New-IISMApp
 * Remove-IISMApp
 * Test-IISMApp
@@ -45,7 +45,7 @@ Import-Module -Name IISManager
 
 ### Directories
 
-* Get-IISMDirectories
+* Get-IISMDirectory
 * Get-IISMDirectoryShare
 * Mount-IISMDirectoryShare
 * New-IISMDirectory
@@ -65,7 +65,7 @@ Import-Module -Name IISManager
 * Get-IISMSiteBindingCertificate
 * Get-IISMSiteBindings
 * Get-IISMSitePhysicalPath
-* Get-IISMSites
+* Get-IISMSite
 * New-IISMSite
 * Remove-IISMSite
 * Remove-IISMSiteBinding

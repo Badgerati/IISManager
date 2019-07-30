@@ -3,7 +3,6 @@ function Reset-IISMServer
     [CmdletBinding()]
     param (
         [Parameter()]
-        [Alias('cn')]
         [string]
         $ComputerName
     )
@@ -16,7 +15,6 @@ function Get-IISMCertificateThumbprint
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $CertificateName
     )

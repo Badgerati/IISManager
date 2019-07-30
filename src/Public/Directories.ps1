@@ -1,19 +1,16 @@
-function Get-IISMDirectories
+function Get-IISMDirectory
 {
     [CmdletBinding()]
     param (
         [Parameter()]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('an')]
         [string]
         $AppName,
 
         [Parameter()]
-        [Alias('p')]
         [string]
         $PhysicalPath
     )
@@ -30,7 +27,7 @@ function Get-IISMDirectories
     }
 
     # just return if there are no results
-    if ($null -eq $result) {
+    if ($null -eq $result.VDIR) {
         return $null
     }
 
@@ -49,18 +46,16 @@ function Test-IISMDirectory
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('an')]
         [string]
         $AppName = '/'
     )
 
     $AppName = Add-IISMSlash -Value $AppName
-    return ($null -ne (Get-IISMDirectories -SiteName $SiteName -AppName $AppName))
+    return ($null -ne (Get-IISMDirectory -SiteName $SiteName -AppName $AppName))
 }
 
 function Remove-IISMDirectory
@@ -68,12 +63,10 @@ function Remove-IISMDirectory
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('an')]
         [string]
         $AppName = '/'
     )
@@ -85,7 +78,7 @@ function Remove-IISMDirectory
         Invoke-IISMAppCommand -Arguments "delete vdir '$($Name)'" -NoParse | Out-Null
     }
 
-    return (Get-IISMDirectories)
+    return (Get-IISMDirectory)
 }
 
 function New-IISMDirectory
@@ -93,17 +86,14 @@ function New-IISMDirectory
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('an')]
         [string]
         $AppName = '/',
 
         [Parameter(Mandatory=$true)]
-        [Alias('p')]
         [string]
         $PhysicalPath,
 
@@ -136,7 +126,7 @@ function New-IISMDirectory
     Wait-IISMBackgroundTask -ScriptBlock { Test-IISMDirectory -SiteName $SiteName -AppName $AppName }
 
     # return the directory
-    return (Get-IISMDirectories -SiteName $SiteName -AppName $AppName)
+    return (Get-IISMDirectory -SiteName $SiteName -AppName $AppName)
 
 }
 
@@ -145,17 +135,14 @@ function Update-IISMDirectory
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('an')]
         [string]
         $AppName = '/',
 
         [Parameter()]
-        [Alias('p')]
         [string]
         $PhysicalPath
     )
@@ -174,7 +161,7 @@ function Update-IISMDirectory
     }
 
     # return the directory
-    return (Get-IISMDirectories -SiteName $SiteName -AppName $AppName)
+    return (Get-IISMDirectory -SiteName $SiteName -AppName $AppName)
 }
 
 function Update-IISMDirectoryPhysicalPaths
@@ -191,7 +178,7 @@ function Update-IISMDirectoryPhysicalPaths
     )
 
     # get all directories with the From path
-    $dirs = Get-IISMDirectories -PhysicalPath $From
+    $dirs = Get-IISMDirectory -PhysicalPath $From
 
     # update each dir
     $dirs | ForEach-Object {
@@ -209,7 +196,7 @@ function Update-IISMDirectoryPhysicalPaths
     }
 
     # return the directories
-    return (Get-IISMDirectories -PhysicalPath $To)
+    return (Get-IISMDirectory -PhysicalPath $To)
 }
 
 function Mount-IISMDirectoryShare
@@ -217,12 +204,10 @@ function Mount-IISMDirectoryShare
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('an')]
         [string]
         $AppName = '/',
 
@@ -269,12 +254,10 @@ function Remove-IISMDirectoryShare
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('an')]
         [string]
         $AppName = '/'
     )
@@ -294,12 +277,10 @@ function Test-IISMDirectoryShare
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('an')]
         [string]
         $AppName = '/'
     )
@@ -312,12 +293,10 @@ function Get-IISMDirectoryShare
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('an')]
         [string]
         $AppName = '/'
     )
