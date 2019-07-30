@@ -2,12 +2,10 @@ function Get-IISMSites
 {
     param (
         [Parameter()]
-        [Alias('n')]
         [string]
         $Name,
 
         [Parameter()]
-        [Alias('p')]
         [string]
         $PhysicalPath
     )
@@ -44,19 +42,18 @@ function Test-IISMSite
 {
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name
     )
 
-    return ($null -ne (Get-IISMSites -Name $Name))
+    $result = Invoke-IISMAppCommand -Arguments "list site '$($Name)'" -NoError
+    return ($null -ne $result)
 }
 
 function Test-IISMSiteRunning
 {
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name
     )
@@ -83,7 +80,6 @@ function Start-IISMSite
 {
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name
     )
@@ -100,7 +96,6 @@ function Restart-IISMSite
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name
     )
@@ -120,19 +115,6 @@ function Get-IISMSiteBindings
     )
 
     return (Get-IISMSites -Name $Name).Bindings
-}
-
-function Get-IISMSiteLogPath
-{
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory=$true)]
-        [string]
-        $Name
-    )
-
-    $site = (Get-IISMSites -Name $Name)
-    return (Join-Path $site.LogFile "W3SVC$($site.ID)")
 }
 
 function Get-IISMSitePhysicalPath

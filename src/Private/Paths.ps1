@@ -27,3 +27,30 @@ function Get-IISMResetPath
 {
     return (Join-Path (Get-IISMHomePath) 'iisreset.exe')
 }
+
+function Get-IISMSiteDefaultLogPath
+{
+    return "$($env:SystemDrive)/inetpub/logs/LogFiles"
+}
+
+function Get-IISMSiteDefaultLogFields
+{
+    $fields = @(
+        'Date',
+        'Time',
+        'ServerIP',
+        'Method',
+        'UriStem',
+        'UriQuery',
+        'ServerPort',
+        'UserName',
+        'ClientIP',
+        'UserAgent',
+        'Referer',
+        'HttpStatus',
+        'HttpSubStatus',
+        'TimeTaken'
+    )
+
+    return ($fields -join ',')
+}
