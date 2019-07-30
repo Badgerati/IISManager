@@ -23,6 +23,7 @@ Import-Module -Name IISManager
 ### Application Pools
 
 * Get-IISMAppPool
+* Get-IISMAppPools
 * New-IISMAppPool
 * Remove-IISMAppPool
 * Reset-IISMAppPool
@@ -66,6 +67,7 @@ Import-Module -Name IISManager
 * Get-IISMSiteBindings
 * Get-IISMSitePhysicalPath
 * Get-IISMSite
+* Get-IISMSites
 * New-IISMSite
 * Remove-IISMSite
 * Remove-IISMSiteBinding

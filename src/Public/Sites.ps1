@@ -1,42 +1,64 @@
 function Get-IISMSite
 {
+    [CmdletBinding(DefaultParameterSetName='Path')]
     param (
         [Parameter()]
-        [string[]]
-        $Names,
-
-        [Parameter()]
         [string]
-        $PhysicalPath
+        $Name,
+
+        [Parameter(ParameterSetName='Path')]
+        [string]
+        $PhysicalPath,
+
+        [Parameter(ParameterSetName='Quick')]
+        [switch]
+        $Quick
     )
 
-    # get all sites
-    $result = Invoke-IISMAppCommand -Arguments 'list sites' -NoError
+    # get site(s)
+    if (![string]::IsNullOrWhiteSpace($Name)) {
+        $result = Invoke-IISMAppCommand -Arguments "list site '$($Name)'" -NoError
+    }
+    else {
+        $result = Invoke-IISMAppCommand -Arguments 'list sites' -NoError
+    }
+
     if ($null -eq $result.SITE) {
         return $null
     }
 
     # get list of IIS apps to map to sites
-    $apps = Get-IISMApp
-    $sites = ConvertTo-IISMSiteObject -Sites $result.SITE -Apps $apps
+    $sites = ConvertTo-IISMSiteObject -Sites $result.SITE -Quick:$Quick
 
     # if we have a physical path, filter sites
-    if (![string]::IsNullOrWhiteSpace($PhysicalPath)) {
+    if (!$Quick -and ![string]::IsNullOrWhiteSpace($PhysicalPath)) {
         $sites = @($sites | Where-Object { $_.Apps | Where-Object { $_.Directory.PhysicalPath -ieq $PhysicalPath } })
         foreach ($site in $sites) {
             $site.Apps = @($site.Apps | Where-Object { $_.Directory.PhysicalPath -ieq $PhysicalPath })
         }
     }
 
-    if ($null -ne $Names) {
-        $sites = $sites | Where-Object { $Names -icontains $_.Name }
-    }
-
     return $sites
+}
+
+function Get-IISMSites
+{
+    [CmdletBinding()]
+    param (
+        [Parameter()]
+        [string[]]
+        $Names,
+
+        [switch]
+        $Quick
+    )
+
+    return @($Names | ForEach-Object { Get-IISMSite -Name $_ -Quick:$Quick })
 }
 
 function Test-IISMSite
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [string]
@@ -49,17 +71,19 @@ function Test-IISMSite
 
 function Test-IISMSiteRunning
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [string]
         $Name
     )
 
-    return ((Get-IISMSite -Names $Name).State -ieq 'started')
+    return ((Get-IISMSite -Name $Name -Quick).State -ieq 'started')
 }
 
 function Stop-IISMSite
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [string]
@@ -70,11 +94,12 @@ function Stop-IISMSite
         Invoke-IISMAppCommand -Arguments "stop site '$($Name)'" -NoParse | Out-Null
     }
 
-    return (Get-IISMSite -Names $Name)
+    return (Get-IISMSite -Name $Name -Quick)
 }
 
 function Start-IISMSite
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [string]
@@ -85,7 +110,7 @@ function Start-IISMSite
         Invoke-IISMAppCommand -Arguments "start site '$($Name)'" -NoParse | Out-Null
     }
 
-    return (Get-IISMSite -Names $Name)
+    return (Get-IISMSite -Name $Name -Quick)
 }
 
 function Restart-IISMSite
@@ -99,7 +124,7 @@ function Restart-IISMSite
     
     Stop-IISMSite -Name $Name | Out-Null
     Start-IISMSite -Name $Name | Out-Null
-    return (Get-IISMSite -Names $Name)
+    return (Get-IISMSite -Name $Name -Quick)
 }
 
 function Get-IISMSiteBindings
@@ -111,7 +136,7 @@ function Get-IISMSiteBindings
         $Name
     )
 
-    return (Get-IISMSite -Names $Name).Bindings
+    return (Get-IISMSite -Name $Name).Bindings
 }
 
 function Get-IISMSitePhysicalPath
@@ -129,7 +154,7 @@ function Get-IISMSitePhysicalPath
 
     $AppName = Add-IISMSlash -Value $AppName
 
-    return ((Get-IISMSite -Names $Name).Apps | Where-Object {
+    return ((Get-IISMSite -Name $Name).Apps | Where-Object {
         $_.Path -ieq $AppName
     } | Select-Object -First 1).Directory.PhysicalPath
 }
@@ -149,7 +174,7 @@ function Get-IISMSiteAppPool
 
     $AppName = Add-IISMSlash -Value $AppName
 
-    return ((Get-IISMSite -Names $Name).Apps | Where-Object {
+    return ((Get-IISMSite -Name $Name).Apps | Where-Object {
         $_.Path -ieq $AppName
     } | Select-Object -First 1).AppPool.Name
 }
@@ -182,7 +207,7 @@ function Edit-IISMSitePhysicalPath
     }
 
     # get the site info
-    $site = Get-IISMSite -Names $Name
+    $site = Get-IISMSite -Name $Name
 
     # error if this site doesn't have the supplied app
     $app = ($site.Apps | Where-Object { $_.Path -ieq $AppName })
@@ -199,7 +224,7 @@ function Edit-IISMSitePhysicalPath
     Update-IISMDirectory -SiteName $Name -AppName $AppName -PhysicalPath $PhysicalPath | Out-Null
 
     # return the site
-    return (Get-IISMSite -Names $Name)
+    return (Get-IISMSite -Name $Name)
 }
 
 function Remove-IISMSite
@@ -430,7 +455,7 @@ function Edit-IISMSiteAppPool
     Invoke-IISMAppCommand -Arguments "set app '$($FullAppName)' /applicationPool:'$($AppPoolName)'" -NoParse | Out-Null
 
     # return the site
-    return (Get-IISMSite -Names $Name)
+    return (Get-IISMSite -Name $Name)
 }
 
 function New-IISMSite
@@ -482,7 +507,7 @@ function New-IISMSite
     Wait-IISMBackgroundTask -ScriptBlock { Test-IISMSite -Name $Name }
 
     # return the site
-    return (Get-IISMSite -Names $Name)
+    return (Get-IISMSite -Name $Name)
 }
 
 function Set-IISMSiteBindingCertificate
