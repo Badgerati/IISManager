@@ -4,17 +4,22 @@ function ConvertTo-IISMSiteObject
         [Parameter()]
         $Sites,
 
-        [Parameter()]
-        $Apps
+        [switch]
+        $Quick
     )
 
+    if ($Quick) {
+        return (ConvertTo-IISMSiteQuickObject -Sites $Sites)
+    }
+
+    $apps = Get-IISMApp
     $mapped = @()
 
     foreach ($site in $Sites) {
         $_apps = @()
 
         # get app info
-        $Apps | Where-Object { $_.SiteName -ieq $site.site.name } | ForEach-Object {
+        $apps | Where-Object { $_.SiteName -ieq $site.site.name } | ForEach-Object {
             $_apps += $_
         }
 
@@ -35,6 +40,35 @@ function ConvertTo-IISMSiteObject
             Add-Member -MemberType NoteProperty -Name Apps -Value $_apps -PassThru |
             Add-Member -MemberType NoteProperty -Name Limits -Value $null -PassThru |
             Add-Member -MemberType NoteProperty -Name Logging -Value $_logging -PassThru |
+            Add-Member -MemberType NoteProperty -Name TraceFailedRequestsLogging -Value $null -PassThru |
+            Add-Member -MemberType NoteProperty -Name Hsts -Value $null -PassThru |
+            Add-Member -MemberType NoteProperty -Name ApplicationDefaults -Value $null -PassThru |
+            Add-Member -MemberType NoteProperty -Name FTPServer -Value $null -PassThru)
+
+        $mapped +=  $obj
+    }
+
+    return $mapped
+}
+
+function ConvertTo-IISMSiteQuickObject
+{
+    param (
+        [Parameter()]
+        $Sites
+    )
+
+    $mapped = @()
+
+    foreach ($site in $Sites) {
+        $obj = (New-Object -TypeName psobject |
+            Add-Member -MemberType NoteProperty -Name ID -Value $site.site.id -PassThru |
+            Add-Member -MemberType NoteProperty -Name Name -Value $site.site.name -PassThru |
+            Add-Member -MemberType NoteProperty -Name Bindings -Value $null -PassThru |
+            Add-Member -MemberType NoteProperty -Name State -Value $site.state -PassThru |
+            Add-Member -MemberType NoteProperty -Name Apps -Value $null -PassThru |
+            Add-Member -MemberType NoteProperty -Name Limits -Value $null -PassThru |
+            Add-Member -MemberType NoteProperty -Name Logging -Value $null -PassThru |
             Add-Member -MemberType NoteProperty -Name TraceFailedRequestsLogging -Value $null -PassThru |
             Add-Member -MemberType NoteProperty -Name Hsts -Value $null -PassThru |
             Add-Member -MemberType NoteProperty -Name ApplicationDefaults -Value $null -PassThru |

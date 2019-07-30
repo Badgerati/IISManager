@@ -3,22 +3,34 @@ function Get-IISMAppPool
     [CmdletBinding()]
     param (
         [Parameter()]
-        [string[]]
-        $Names
+        [string]
+        $Name
     )
 
-    $result = Invoke-IISMAppCommand -Arguments 'list apppools' -NoError
+    if (![string]::IsNullOrWhiteSpace($Name)) {
+        $result = Invoke-IISMAppCommand -Arguments "list apppool '$($Name)'" -NoError
+    }
+    else {
+        $result = Invoke-IISMAppCommand -Arguments 'list apppools' -NoError
+    }
+
     if ($null -eq $result.APPPOOL) {
         return $null
     }
 
-    $pools = ConvertTo-IISMAppPoolObject -AppPools $result.APPPOOL
+    return (ConvertTo-IISMAppPoolObject -AppPools $result.APPPOOL)
+}
 
-    if ($null -ne $Names) {
-        $pools = $pools | Where-Object { $Names -icontains $_.Name }
-    }
+function Get-IISMAppPools
+{
+    [CmdletBinding()]
+    param (
+        [Parameter()]
+        [string[]]
+        $Names
+    )
 
-    return $pools
+    return @($Names | ForEach-Object { Get-IISMAppPool -Name $_ })
 }
 
 function Test-IISMAppPool
@@ -30,7 +42,7 @@ function Test-IISMAppPool
         $Name
     )
 
-    return ($null -ne (Get-IISMAppPool -Names $Name))
+    return ($null -ne (Get-IISMAppPool -Name $Name))
 }
 
 function Test-IISMAppPoolRunning
@@ -42,7 +54,7 @@ function Test-IISMAppPoolRunning
         $Name
     )
 
-    return ((Get-IISMAppPool -Names $Name).State -ieq 'started')
+    return ((Get-IISMAppPool -Name $Name).State -ieq 'started')
 }
 
 function Stop-IISMAppPool
@@ -59,7 +71,7 @@ function Stop-IISMAppPool
     }
 
     Invoke-IISMAppCommand -Arguments "stop apppool '$($Name)'" -NoParse | Out-Null
-    return (Get-IISMAppPool -Names $Name)
+    return (Get-IISMAppPool -Name $Name)
 }
 
 function Start-IISMAppPool
@@ -76,7 +88,7 @@ function Start-IISMAppPool
     }
 
     Invoke-IISMAppCommand -Arguments "start apppool '$($Name)'" -NoParse | Out-Null
-    return (Get-IISMAppPool -Names $Name)
+    return (Get-IISMAppPool -Name $Name)
 }
 
 function Restart-IISMAppPool
@@ -90,7 +102,7 @@ function Restart-IISMAppPool
 
     Stop-IISMAppPool -Name $Name | Out-Null
     Start-IISMAppPool -Name $Name | Out-Null
-    return (Get-IISMAppPool -Names $Name)
+    return (Get-IISMAppPool -Name $Name)
 }
 
 function Reset-IISMAppPool
@@ -107,7 +119,7 @@ function Reset-IISMAppPool
     }
 
     Invoke-IISMAppCommand -Arguments "recycle apppool '$($Name)'" -NoParse | Out-Null
-    return (Get-IISMAppPool -Names $Name)
+    return (Get-IISMAppPool -Name $Name)
 }
 
 function Remove-IISMAppPool
@@ -160,7 +172,7 @@ function New-IISMAppPool
     Wait-IISMBackgroundTask -ScriptBlock { Test-IISMAppPool -Name $Name }
 
     # return the app-pool
-    return (Get-IISMAppPool -Names $Name)
+    return (Get-IISMAppPool -Name $Name)
 }
 
 function Update-IISMAppPool
@@ -207,7 +219,7 @@ function Update-IISMAppPool
     }
 
     # return the app-pool
-    return (Get-IISMAppPool -Names $Name)
+    return (Get-IISMAppPool -Name $Name)
 }
 
 function Update-IISMAppPoolProcessModel
@@ -289,7 +301,7 @@ function Update-IISMAppPoolProcessModel
     }
 
     # return the app-pool
-    return (Get-IISMAppPool -Names $Name)
+    return (Get-IISMAppPool -Name $Name)
 }
 
 function Update-IISMAppPoolRecycling
@@ -332,5 +344,5 @@ function Update-IISMAppPoolRecycling
     }
 
     # return the app-pool
-    return (Get-IISMAppPool -Names $Name)
+    return (Get-IISMAppPool -Name $Name)
 }
