@@ -1,14 +1,12 @@
-function Get-IISMApps
+function Get-IISMApp
 {
     [CmdletBinding()]
     param (
         [Parameter()]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('n')]
         [string]
         $Name
     )
@@ -23,12 +21,12 @@ function Get-IISMApps
         $result = Invoke-IISMAppCommand -Arguments 'list apps' -NoError
     }
 
-    if ($null -eq $result) {
+    if ($null -eq $result.APP) {
         return $null
     }
 
-    $pools = Get-IISMAppPools
-    $dirs = Get-IISMDirectories
+    $pools = Get-IISMAppPool
+    $dirs = Get-IISMDirectory
     ConvertTo-IISMAppObject -Apps $result.APP -AppPools $pools -Directories $dirs
 }
 
@@ -37,17 +35,15 @@ function Test-IISMApp
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('n')]
         [string]
         $Name = '/'
     )
 
-    return ($null -ne (Get-IISMApps -SiteName $SiteName -Name $Name))
+    return ($null -ne (Get-IISMApp -SiteName $SiteName -Name $Name))
 }
 
 function Remove-IISMApp
@@ -55,12 +51,10 @@ function Remove-IISMApp
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('n')]
         [string]
         $Name = '/'
     )
@@ -71,7 +65,7 @@ function Remove-IISMApp
         Invoke-IISMAppCommand -Arguments "delete app '$($SiteName)$($Name)'" -NoParse | Out-Null
     }
 
-    return (Get-IISMApps)
+    return (Get-IISMApp)
 }
 
 function New-IISMApp
@@ -79,22 +73,18 @@ function New-IISMApp
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('n')]
         [string]
         $Name = '/',
 
         [Parameter(Mandatory=$true)]
-        [Alias('p')]
         [string]
         $PhysicalPath,
 
         [Parameter()]
-        [Alias('apn')]
         [string]
         $AppPoolName
     )
@@ -116,7 +106,7 @@ function New-IISMApp
     Wait-IISMBackgroundTask -ScriptBlock { Test-IISMApp -SiteName $SiteName -Name $Name }
 
     # return the app
-    return (Get-IISMApps -SiteName $SiteName -Name $Name)
+    return (Get-IISMApp -SiteName $SiteName -Name $Name)
 }
 
 function Update-IISMApp
@@ -124,22 +114,18 @@ function Update-IISMApp
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('sn')]
         [string]
         $SiteName,
 
         [Parameter()]
-        [Alias('n')]
         [string]
         $Name = '/',
 
         [Parameter()]
-        [Alias('p')]
         [string]
         $PhysicalPath,
 
         [Parameter()]
-        [Alias('apn')]
         [string]
         $AppPoolName
     )
@@ -163,5 +149,5 @@ function Update-IISMApp
     }
 
     # return the app
-    return (Get-IISMApps -SiteName $SiteName -Name $Name)
+    return (Get-IISMApp -SiteName $SiteName -Name $Name)
 }

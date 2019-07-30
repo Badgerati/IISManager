@@ -1,30 +1,23 @@
-function Get-IISMSites
+function Get-IISMSite
 {
     param (
         [Parameter()]
-        [string]
-        $Name,
+        [string[]]
+        $Names,
 
         [Parameter()]
         [string]
         $PhysicalPath
     )
 
-    # get either one site, or all sites
-    if (![string]::IsNullOrWhiteSpace($Name)) {
-        $result = Invoke-IISMAppCommand -Arguments "list site '$($Name)'" -NoError
-    }
-    else {
-        $result = Invoke-IISMAppCommand -Arguments 'list sites' -NoError
-    }
-
-    # just return if there are no results
-    if ($null -eq $result) {
+    # get all sites
+    $result = Invoke-IISMAppCommand -Arguments 'list sites' -NoError
+    if ($null -eq $result.SITE) {
         return $null
     }
 
     # get list of IIS apps to map to sites
-    $apps = Get-IISMApps
+    $apps = Get-IISMApp
     $sites = ConvertTo-IISMSiteObject -Sites $result.SITE -Apps $apps
 
     # if we have a physical path, filter sites
@@ -33,6 +26,10 @@ function Get-IISMSites
         foreach ($site in $sites) {
             $site.Apps = @($site.Apps | Where-Object { $_.Directory.PhysicalPath -ieq $PhysicalPath })
         }
+    }
+
+    if ($null -ne $Names) {
+        $sites = $sites | Where-Object { $Names -icontains $_.Name }
     }
 
     return $sites
@@ -47,7 +44,7 @@ function Test-IISMSite
     )
 
     $result = Invoke-IISMAppCommand -Arguments "list site '$($Name)'" -NoError
-    return ($null -ne $result)
+    return ($null -ne $result.SITE)
 }
 
 function Test-IISMSiteRunning
@@ -58,7 +55,7 @@ function Test-IISMSiteRunning
         $Name
     )
 
-    return ((Get-IISMSites -Name $Name).State -ieq 'started')
+    return ((Get-IISMSite -Names $Name).State -ieq 'started')
 }
 
 function Stop-IISMSite
@@ -73,7 +70,7 @@ function Stop-IISMSite
         Invoke-IISMAppCommand -Arguments "stop site '$($Name)'" -NoParse | Out-Null
     }
 
-    return (Get-IISMSites -Name $Name)
+    return (Get-IISMSite -Names $Name)
 }
 
 function Start-IISMSite
@@ -88,7 +85,7 @@ function Start-IISMSite
         Invoke-IISMAppCommand -Arguments "start site '$($Name)'" -NoParse | Out-Null
     }
 
-    return (Get-IISMSites -Name $Name)
+    return (Get-IISMSite -Names $Name)
 }
 
 function Restart-IISMSite
@@ -102,7 +99,7 @@ function Restart-IISMSite
     
     Stop-IISMSite -Name $Name | Out-Null
     Start-IISMSite -Name $Name | Out-Null
-    return (Get-IISMSites -Name $Name)
+    return (Get-IISMSite -Names $Name)
 }
 
 function Get-IISMSiteBindings
@@ -114,7 +111,7 @@ function Get-IISMSiteBindings
         $Name
     )
 
-    return (Get-IISMSites -Name $Name).Bindings
+    return (Get-IISMSite -Names $Name).Bindings
 }
 
 function Get-IISMSitePhysicalPath
@@ -122,19 +119,17 @@ function Get-IISMSitePhysicalPath
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name,
 
         [Parameter()]
-        [Alias('an')]
         [string]
         $AppName = '/'
     )
 
     $AppName = Add-IISMSlash -Value $AppName
 
-    return ((Get-IISMSites -Name $Name).Apps | Where-Object {
+    return ((Get-IISMSite -Names $Name).Apps | Where-Object {
         $_.Path -ieq $AppName
     } | Select-Object -First 1).Directory.PhysicalPath
 }
@@ -144,19 +139,17 @@ function Get-IISMSiteAppPool
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name,
 
         [Parameter()]
-        [Alias('an')]
         [string]
         $AppName = '/'
     )
 
     $AppName = Add-IISMSlash -Value $AppName
 
-    return ((Get-IISMSites -Name $Name).Apps | Where-Object {
+    return ((Get-IISMSite -Names $Name).Apps | Where-Object {
         $_.Path -ieq $AppName
     } | Select-Object -First 1).AppPool.Name
 }
@@ -166,17 +159,14 @@ function Edit-IISMSitePhysicalPath
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name,
 
         [Parameter()]
-        [Alias('an')]
         [string]
         $AppName = '/',
 
         [Parameter(Mandatory=$true)]
-        [Alias('p')]
         [string]
         $PhysicalPath,
 
@@ -192,7 +182,7 @@ function Edit-IISMSitePhysicalPath
     }
 
     # get the site info
-    $site = Get-IISMSites -Name $Name
+    $site = Get-IISMSite -Names $Name
 
     # error if this site doesn't have the supplied app
     $app = ($site.Apps | Where-Object { $_.Path -ieq $AppName })
@@ -209,7 +199,7 @@ function Edit-IISMSitePhysicalPath
     Update-IISMDirectory -SiteName $Name -AppName $AppName -PhysicalPath $PhysicalPath | Out-Null
 
     # return the site
-    return (Get-IISMSites -Name $Name)
+    return (Get-IISMSite -Names $Name)
 }
 
 function Remove-IISMSite
@@ -217,7 +207,6 @@ function Remove-IISMSite
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name
     )
@@ -230,7 +219,7 @@ function Remove-IISMSite
         Invoke-IISMAppCommand -Arguments "delete site '$($Name)'" -NoParse | Out-Null
     }
 
-    return (Get-IISMSites)
+    return (Get-IISMSite)
 }
 
 function Test-IISMSiteBinding
@@ -238,7 +227,6 @@ function Test-IISMSiteBinding
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name,
 
@@ -252,7 +240,6 @@ function Test-IISMSiteBinding
         $Port,
 
         [Parameter()]
-        [Alias('ip')]
         [string]
         $IPAddress,
 
@@ -282,7 +269,6 @@ function Remove-IISMSiteBindings
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name
     )
@@ -303,7 +289,6 @@ function Remove-IISMSiteBinding
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name,
 
@@ -317,7 +302,6 @@ function Remove-IISMSiteBinding
         $Port,
 
         [Parameter()]
-        [Alias('ip')]
         [string]
         $IPAddress,
 
@@ -351,7 +335,6 @@ function Remove-IISMSiteDefaultBinding
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name
     )
@@ -363,7 +346,6 @@ function Add-IISMSiteBinding
 {
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name,
 
@@ -377,7 +359,6 @@ function Add-IISMSiteBinding
         $Port,
 
         [Parameter()]
-        [Alias('ip')]
         [string]
         $IPAddress,
 
@@ -415,17 +396,14 @@ function Edit-IISMSiteAppPool
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name,
 
         [Parameter()]
-        [Alias('an')]
         [string]
         $AppName ='/',
 
         [Parameter(Mandatory=$true)]
-        [Alias('apn')]
         [string]
         $AppPoolName
     )
@@ -452,7 +430,7 @@ function Edit-IISMSiteAppPool
     Invoke-IISMAppCommand -Arguments "set app '$($FullAppName)' /applicationPool:'$($AppPoolName)'" -NoParse | Out-Null
 
     # return the site
-    return (Get-IISMSites -Name $Name)
+    return (Get-IISMSite -Names $Name)
 }
 
 function New-IISMSite
@@ -460,17 +438,14 @@ function New-IISMSite
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [Alias('n')]
         [string]
         $Name,
 
         [Parameter()]
-        [Alias('apn')]
         [string]
         $AppPoolName,
 
         [Parameter(Mandatory=$true)]
-        [Alias('p')]
         [string]
         $PhysicalPath,
 
@@ -507,7 +482,7 @@ function New-IISMSite
     Wait-IISMBackgroundTask -ScriptBlock { Test-IISMSite -Name $Name }
 
     # return the site
-    return (Get-IISMSites -Name $Name)
+    return (Get-IISMSite -Names $Name)
 }
 
 function Set-IISMSiteBindingCertificate
@@ -523,7 +498,6 @@ function Set-IISMSiteBindingCertificate
         $Port,
 
         [Parameter()]
-        [Alias('ip')]
         [string]
         $IPAddress,
 
@@ -570,7 +544,6 @@ function Remove-IISMSiteBindingCertificate
         $Port,
 
         [Parameter()]
-        [Alias('ip')]
         [string]
         $IPAddress,
 
@@ -615,7 +588,6 @@ function Test-IISMSiteBindingCertificate
         $Port,
 
         [Parameter()]
-        [Alias('ip')]
         [string]
         $IPAddress,
 
@@ -636,7 +608,6 @@ function Get-IISMSiteBindingCertificate
         $Port,
 
         [Parameter()]
-        [Alias('ip')]
         [string]
         $IPAddress,
 
