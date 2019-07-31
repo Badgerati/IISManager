@@ -170,7 +170,7 @@ function Set-IISMSiteLogFields
         }
 
         default {
-            Invoke-IISMAppCommand -Arguments "set config /section:sites /siteDefaults.logfile.logExtFileFlags:$($Fields -join ',')" -NoParse | Out-Null
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"siteDefaults.logfile.logExtFileFlags:$($Fields -join ',')`"" -NoParse | Out-Null
         }
     }
 }
