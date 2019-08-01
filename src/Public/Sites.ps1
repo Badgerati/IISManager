@@ -179,6 +179,20 @@ function Get-IISMSiteAppPool
     } | Select-Object -First 1).AppPool.Name
 }
 
+function Reset-IISMSiteAppPool
+{
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name
+    )
+
+    (Get-IISMSite -Name $Name).Apps.AppPool.Name | Sort-Object -Unique | ForEach-Object {
+        Reset-IISMAppPool -Name $_ | Out-Null
+    }
+}
+
 function Edit-IISMSitePhysicalPath
 {
     [CmdletBinding()]

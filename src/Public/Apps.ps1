@@ -98,7 +98,13 @@ function New-IISMApp
 
     # create the app
     $_args = "/site.name:'$($SiteName)' /path:$($Name) /physicalPath:'$($PhysicalPath)'"
+
+    # if app-pool supplied, set it. if it doesn't exist, create a default one
     if (![string]::IsNullOrWhiteSpace($AppPoolName)) {
+        if (!(Test-IISMAppPool -Name $AppPoolName)) {
+            New-IISMAppPool -Name $AppPoolName | Out-Null
+        }
+
         $_args += " /applicationPool:'$($AppPoolName)'"
     }
 

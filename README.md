@@ -74,6 +74,7 @@ Import-Module -Name IISManager
 * Remove-IISMSiteBindings
 * Remove-IISMSiteDefaultBinding
 * Remove-IISMSiteBindingCertificate
+* Reset-IISMSiteAppPool
 * Restart-IISMSite
 * Set-IISMSiteBindingCertificate
 * Start-IISMSite
