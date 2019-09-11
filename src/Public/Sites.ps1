@@ -517,7 +517,7 @@ function New-IISMSite
     Invoke-IISMAppCommand -Arguments "add site $($_args)" -NoParse | Out-Null
 
     # bind the app-pool to the site's default app
-    Update-IISMSiteAppPool -Name $Name -App '/' -AppPoolName $AppPoolName | Out-Null
+    Edit-IISMSiteAppPool -Name $Name -AppName '/' -AppPoolName $AppPoolName | Out-Null
     Wait-IISMBackgroundTask -ScriptBlock { Test-IISMSite -Name $Name }
 
     # return the site

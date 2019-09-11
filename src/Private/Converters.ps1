@@ -16,16 +16,18 @@ function ConvertTo-IISMSiteObject
     $mapped = @()
 
     foreach ($site in $Sites) {
-        $_apps = @()
-
         # get app info
-        $apps | Where-Object { $_.SiteName -ieq $site.site.name } | ForEach-Object {
-            $_apps += $_
-        }
+        $_apps = @($apps | Where-Object { $_.SiteName -ieq $site.site.name } | ForEach-Object {
+            if ($null -ne $_) {
+                $_
+            }
+        })
 
         # get binding info
         $_bindings = @($site.site.bindings.binding | ForEach-Object {
-            Get-IISMSiteBindingInformation -Binding $_
+            if ($null -ne $_) {
+                Get-IISMSiteBindingInformation -Binding $_
+            }
         })
 
         # get logging info
@@ -74,7 +76,7 @@ function ConvertTo-IISMSiteQuickObject
             Add-Member -MemberType NoteProperty -Name ApplicationDefaults -Value $null -PassThru |
             Add-Member -MemberType NoteProperty -Name FTPServer -Value $null -PassThru)
 
-        $mapped +=  $obj
+        $mapped += $obj
     }
 
     return $mapped
