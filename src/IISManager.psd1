@@ -11,7 +11,7 @@
     RootModule = 'IISManager.psm1'
 
     # Version number of this module.
-    ModuleVersion = '1.2.3'
+    ModuleVersion = '1.2.4'
 
     # ID used to uniquely identify this module
     GUID = 'a3ba417c-dc1d-446b-95a5-a306ab26c1af'
@@ -41,9 +41,6 @@
 
             # A URL to the main website for this project.
             ProjectUri = 'https://github.com/Badgerati/IISManager'
-
-            # Release notes for this particular version of the module
-            ReleaseNotes = 'https://github.com/Badgerati/IISManager/releases/tag/v1.2.3'
 
         }
     }
