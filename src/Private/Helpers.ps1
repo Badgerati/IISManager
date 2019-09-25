@@ -74,7 +74,7 @@ function Invoke-IISMNetCommand
 function Invoke-IISMResetCommand
 {
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter()]
         [string]
         $Arguments,
 
