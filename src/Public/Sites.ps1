@@ -92,6 +92,7 @@ function Stop-IISMSite
 
     if (Test-IISMSiteRunning -Name $Name) {
         Invoke-IISMAppCommand -Arguments "stop site '$($Name)'" -NoParse | Out-Null
+        Invoke-IISMAppCommand -Arguments "set site '$($Name)' /serverAutoStart:false" -NoParse | Out-Null
     }
 
     return (Get-IISMSite -Name $Name -Quick)
@@ -108,6 +109,7 @@ function Start-IISMSite
 
     if (!(Test-IISMSiteRunning -Name $Name)) {
         Invoke-IISMAppCommand -Arguments "start site '$($Name)'" -NoParse | Out-Null
+        Invoke-IISMAppCommand -Arguments "set site '$($Name)' /serverAutoStart:true" -NoParse | Out-Null
     }
 
     return (Get-IISMSite -Name $Name -Quick)
@@ -489,7 +491,10 @@ function New-IISMSite
         $PhysicalPath,
 
         [switch]
-        $CreatePath
+        $CreatePath,
+
+        [switch]
+        $DisableAutoStart
     )
 
     # if no app-pool name, set to the site name
@@ -515,6 +520,9 @@ function New-IISMSite
     # create the site in IIS
     $_args = "/name:'$($Name)' /physicalPath:'$($PhysicalPath)'"
     Invoke-IISMAppCommand -Arguments "add site $($_args)" -NoParse | Out-Null
+
+    # flag the site's auto start mode
+    Invoke-IISMAppCommand -Arguments "set site '$($Name)' /serverAutoStart:$(!$DisableAutoStart)" -NoParse | Out-Null
 
     # bind the app-pool to the site's default app
     Edit-IISMSiteAppPool -Name $Name -AppName '/' -AppPoolName $AppPoolName | Out-Null

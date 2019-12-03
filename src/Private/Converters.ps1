@@ -33,6 +33,9 @@ function ConvertTo-IISMSiteObject
         # get logging info
         $_logging = Get-IISMSiteLogging -Name $site.site.name
 
+        # server auto start
+        $serverAutoStart = (($null -eq $site.site.serverAutoStart) -or ('true' -ieq $site.site.serverAutoStart))
+
         # build site object
         $obj = (New-Object -TypeName psobject |
             Add-Member -MemberType NoteProperty -Name ID -Value $site.site.id -PassThru |
@@ -45,7 +48,8 @@ function ConvertTo-IISMSiteObject
             Add-Member -MemberType NoteProperty -Name TraceFailedRequestsLogging -Value $null -PassThru |
             Add-Member -MemberType NoteProperty -Name Hsts -Value $null -PassThru |
             Add-Member -MemberType NoteProperty -Name ApplicationDefaults -Value $null -PassThru |
-            Add-Member -MemberType NoteProperty -Name FTPServer -Value $null -PassThru)
+            Add-Member -MemberType NoteProperty -Name FTPServer -Value $null -PassThru |
+            Add-Member -MemberType NoteProperty -Name ServerAutoStart -Value $serverAutoStart -PassThru)
 
         $mapped +=  $obj
     }
