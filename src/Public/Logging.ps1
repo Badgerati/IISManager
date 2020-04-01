@@ -213,6 +213,7 @@ function Set-IISMSiteLogPath
         }
     }
 }
+
 function Get-IISMSiteLogFields
 {
     [CmdletBinding(DefaultParameterSetName='Default')]
@@ -350,6 +351,61 @@ function Remove-IISMSiteLogField
     }
 }
 
+function Clear-IISMSiteLogFields
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            Set-IISMSiteLogFields -Name $Name -Fields @()
+        }
+
+        default {
+            Set-IISMSiteLogFields -Default -Fields @()
+        }
+    }
+}
+
+function Test-IISMSiteLogField
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Field,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    # get current fields
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            $fields = Get-IISMSiteLogFields -Name $Name
+        }
+
+        default {
+            $fields = Get-IISMSiteLogFields -Default
+        }
+    }
+
+    return ($fields -icontains $Field)
+}
+
 function Get-IISMSiteCustomLogFields
 {
     [CmdletBinding(DefaultParameterSetName='Default')]
@@ -412,10 +468,27 @@ function Add-IISMSiteCustomLogField
         $Default
     )
 
+    # skip if it already exists
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            $exists = (Test-IISMSiteCustomLogField -Name $Name -Field $Field)
+        }
+
+        default {
+            $exists = (Test-IISMSiteCustomLogField -Default -Field $Field)
+        }
+    }
+
+    if ($exists) {
+        return
+    }
+
+    # set source as field
     if ([string]::IsNullOrWhiteSpace($Source)) {
         $Source = $Field
     }
 
+    # add the custom field
     switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
         'site' {
             if (!(Test-IISMSite -Name $Name)) {
@@ -461,4 +534,73 @@ function Remove-IISMSiteCustomLogField
             Invoke-IISMAppCommand -Arguments "set config /section:sites /-`"siteDefaults.logFile.customFields.[logFieldName='$($Field)']`"" -NoParse | Out-Null
         }
     }
+}
+
+function Clear-IISMSiteCustomLogFields
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    # get current fields
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            $fields = Get-IISMSiteCustomLogFields -Name $Name
+        }
+
+        default {
+            $fields = Get-IISMSiteCustomLogFields -Default
+        }
+    }
+
+    # go through each one and remove them
+    foreach ($field in $fields) {
+        switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+            'site' {
+                Remove-IISMSiteCustomLogField -Name $Name -Field $field.Name
+            }
+
+            default {
+                Remove-IISMSiteCustomLogField -Default -Field $field.Name
+            }
+        }
+    }
+}
+
+function Test-IISMSiteCustomLogField
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Field,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    # get current fields
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            $fields = Get-IISMSiteCustomLogFields -Name $Name
+        }
+
+        default {
+            $fields = Get-IISMSiteCustomLogFields -Default
+        }
+    }
+
+    return (@($fields | Where-Object { $_.Name -ieq $Field }).Length -eq 1)
 }
