@@ -248,7 +248,7 @@ function Get-IISMSiteLogFields
         }
     }
 
-    return ($fields -split ',')
+    return ($fields -split ',').Trim()
 }
 
 function Set-IISMSiteLogFields
