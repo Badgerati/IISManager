@@ -17,6 +17,7 @@ function Get-IISMSiteLogging
             $logCustomFields = Get-IISMSiteCustomLogFields -Name $Name
             $logFormat = Get-IISMSiteLogFormat -Name $Name
             $logPath = Get-IISMSiteLogPath -Name $Name
+            $logPeriod = Get-IISMSiteLogPeriod -Name $Name
         }
 
         default {
@@ -24,10 +25,16 @@ function Get-IISMSiteLogging
             $logCustomFields = Get-IISMSiteCustomLogFields -Default
             $logFormat = Get-IISMSiteLogFormat -Default
             $logPath = Get-IISMSiteLogPath -Default
+            $logPeriod = Get-IISMSiteLogPeriod -Default
         }
     }
 
-    return (ConvertTo-IISMSiteLoggingObject -Fields $logFields -CustomFields $logCustomFields -Format $logFormat -PAth $logPath)
+    return (ConvertTo-IISMSiteLoggingObject `
+        -Fields $logFields `
+        -CustomFields $logCustomFields `
+        -Format $logFormat `
+        -Path $logPath `
+        -Period $logPeriod)
 }
 
 function Get-IISMSiteLogFormat
@@ -65,6 +72,75 @@ function Get-IISMSiteLogFormat
     }
 
     return $format
+}
+
+function Get-IISMSiteLogPeriod
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            if (!(Test-IISMSite -Name $Name)) {
+                throw "Website '$($Name)' does not exist in IIS"
+            }
+
+            $result = Invoke-IISMAppCommand -Arguments "list site '$Name'" -NoError
+
+            $period = $result.SITE.site.logFile.period
+            if ([string]::IsNullOrWhiteSpace($period)) {
+                $period = Get-IISMSiteLogPeriod -Default
+            }
+        }
+
+        default {
+            $result = Invoke-IISMAppCommand -Arguments "list config /section:sites" -NoError
+            $period = $result.CONFIG.'system.applicationHost-sites'.siteDefaults.logFile.period
+            $period = (Protect-IISMValue $period 'Daily')
+        }
+    }
+
+    return $period
+}
+function Set-IISMSiteLogPeriod
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('Hourly', 'Daily', 'Weekly', 'Monthly')]
+        [string]
+        $Period,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            if (!(Test-IISMSite -Name $Name)) {
+                throw "Website '$($Name)' does not exist in IIS"
+            }
+
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"[name='$($Name)'].logFile.period:$($Period)`"" -NoParse | Out-Null
+        }
+
+        default {
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"siteDefaults.logFile.period:$($Period)`"" -NoParse | Out-Null
+        }
+    }
 }
 
 function Get-IISMSiteLogPath
@@ -106,6 +182,37 @@ function Get-IISMSiteLogPath
     return [System.Environment]::ExpandEnvironmentVariables($logpath)
 }
 
+function Set-IISMSiteLogPath
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Path,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            if (!(Test-IISMSite -Name $Name)) {
+                throw "Website '$($Name)' does not exist in IIS"
+            }
+
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"[name='$($Name)'].logFile.directory:$($Path)`"" -NoParse | Out-Null
+        }
+
+        default {
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"siteDefaults.logFile.directory:$($Path)`"" -NoParse | Out-Null
+        }
+    }
+}
 function Get-IISMSiteLogFields
 {
     [CmdletBinding(DefaultParameterSetName='Default')]
@@ -166,11 +273,11 @@ function Set-IISMSiteLogFields
                 throw "Website '$($Name)' does not exist in IIS"
             }
 
-            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"[name='$($Name)'].logfile.logExtFileFlags:$($Fields -join ',')`"" -NoParse | Out-Null
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"[name='$($Name)'].logFile.logExtFileFlags:$($Fields -join ',')`"" -NoParse | Out-Null
         }
 
         default {
-            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"siteDefaults.logfile.logExtFileFlags:$($Fields -join ',')`"" -NoParse | Out-Null
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"siteDefaults.logFile.logExtFileFlags:$($Fields -join ',')`"" -NoParse | Out-Null
         }
     }
 }
@@ -315,11 +422,11 @@ function Add-IISMSiteCustomLogField
                 throw "Website '$($Name)' does not exist in IIS"
             }
 
-            Invoke-IISMAppCommand -Arguments "set config /section:sites /+`"[name='$($Name)'].logfile.customFields.[logFieldName='$($Field)',sourceName='$($Source)',sourceType='$($Type)']`"" -NoParse | Out-Null
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /+`"[name='$($Name)'].logFile.customFields.[logFieldName='$($Field)',sourceName='$($Source)',sourceType='$($Type)']`"" -NoParse | Out-Null
         }
 
         default {
-            Invoke-IISMAppCommand -Arguments "set config /section:sites /+`"siteDefaults.logfile.customFields.[logFieldName='$($Field)',sourceName='$($Source)',sourceType='$($Type)']`"" -NoParse | Out-Null
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /+`"siteDefaults.logFile.customFields.[logFieldName='$($Field)',sourceName='$($Source)',sourceType='$($Type)']`"" -NoParse | Out-Null
         }
     }
 }
@@ -347,11 +454,11 @@ function Remove-IISMSiteCustomLogField
                 throw "Website '$($Name)' does not exist in IIS"
             }
 
-            Invoke-IISMAppCommand -Arguments "set config /section:sites /-`"[name='$($Name)'].logfile.customFields.[logFieldName='$($Field)']`"" -NoParse | Out-Null
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /-`"[name='$($Name)'].logFile.customFields.[logFieldName='$($Field)']`"" -NoParse | Out-Null
         }
 
         default {
-            Invoke-IISMAppCommand -Arguments "set config /section:sites /-`"siteDefaults.logfile.customFields.[logFieldName='$($Field)']`"" -NoParse | Out-Null
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /-`"siteDefaults.logFile.customFields.[logFieldName='$($Field)']`"" -NoParse | Out-Null
         }
     }
 }

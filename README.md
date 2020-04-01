@@ -93,9 +93,12 @@ Import-Module -Name IISManager
 * Get-IISMSiteLogFormat
 * Get-IISMSiteLogging
 * Get-IISMSiteLogPath
+* Get-IISMSiteLogPeriod
 * Remove-IISMSiteCustomLogField
 * Remove-IISMSiteLogField
 * Set-IISMSiteLogFields
+* Set-IISMSiteLogPath
+* Set-IISMSiteLogPeriod
 
 ### Misc
 
