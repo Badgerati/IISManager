@@ -120,14 +120,18 @@ function ConvertTo-IISMSiteLoggingObject
         $Format,
 
         [Parameter()]
-        $Path
+        $Path,
+
+        [Parameter()]
+        $Period
     )
 
     $obj = (New-Object -TypeName psobject |
         Add-Member -MemberType NoteProperty -Name Fields -Value $Fields -PassThru |
         Add-Member -MemberType NoteProperty -Name CustomFields -Value $CustomFields -PassThru |
         Add-Member -MemberType NoteProperty -Name Format -Value $Format -PassThru |
-        Add-Member -MemberType NoteProperty -Name Path -Value $Path -PassThru)
+        Add-Member -MemberType NoteProperty -Name Path -Value $Path -PassThru |
+        Add-Member -MemberType NoteProperty -Name Period -Value $Period -PassThru)
 
     return $obj
 }
