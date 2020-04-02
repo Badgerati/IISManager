@@ -101,9 +101,9 @@ function Get-IISMSiteBindingInformation
     # get the protocol
     $protocol = $Binding.protocol
     $info = @{
-        'IP' = $null;
-        'Port' = $null;
-        'Hostname' = $null
+        IP = $null
+        Port = $null
+        Hostname = $null
     }
 
     # get ip, port, hostname
@@ -133,12 +133,13 @@ function Get-IISMSiteBindingInformation
     }
 
     # set the binding info and return
-    $info = (New-Object -TypeName psobject |
-        Add-Member -MemberType NoteProperty -Name Protocol -Value $protocol -PassThru |
-        Add-Member -MemberType NoteProperty -Name IPAddress -Value $info.IP -PassThru |
-        Add-Member -MemberType NoteProperty -Name Port -Value $info.Port -PassThru |
-        Add-Member -MemberType NoteProperty -Name Hostname -Value $info.Hostname -PassThru |
-        Add-Member -MemberType NoteProperty -Name Certificate -Value $cert -PassThru)
+    $info = @{
+        Protocol = $protocol
+        IPAddress = $info.IP
+        Port = $info.Port
+        Hostname = $info.Hostname
+        Certificate = $cert
+    }
 
     return $info
 }
@@ -253,4 +254,25 @@ function Protect-IISMValue
     }
 
     return $Value1
+}
+
+function New-IISMCredentials
+{
+    [CmdletBinding()]
+    [OutputType([pscredential])]
+    param(
+        [Parameter()]
+        [string]
+        $Username,
+
+        [Parameter()]
+        [string]
+        $Password
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
+        return $null
+    }
+
+    return (New-Object System.Management.Automation.PSCredential -ArgumentList $Username, (ConvertTo-SecureString -AsPlainText $Password -Force))
 }

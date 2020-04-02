@@ -30,7 +30,7 @@ function Get-IISMAppPools
         $Names
     )
 
-    return @($Names | ForEach-Object { Get-IISMAppPool -Name $_ })
+    return @(foreach ($name in $Names) { Get-IISMAppPool -Name $name })
 }
 
 function Test-IISMAppPool
@@ -338,8 +338,8 @@ function Update-IISMAppPoolRecycling
         Invoke-IISMAppCommand -Arguments "set apppool '$($Name)' /-recycling.periodicRestart.schedule" -NoParse | Out-Null
 
         # add the new times
-        @($RecycleTimes) | ForEach-Object {
-            Invoke-IISMAppCommand -Arguments "set apppool '$($Name)' /+`"recycling.periodicRestart.schedule.[value='$($_.ToString())']`"" -NoParse | Out-Null
+        foreach ($time in @($RecycleTimes)) {
+            Invoke-IISMAppCommand -Arguments "set apppool '$($Name)' /+`"recycling.periodicRestart.schedule.[value='$($time.ToString())']`"" -NoParse | Out-Null
         }
     }
 

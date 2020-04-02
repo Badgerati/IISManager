@@ -181,8 +181,8 @@ function Update-IISMDirectoryPhysicalPaths
     $dirs = Get-IISMDirectory -PhysicalPath $From
 
     # update each dir
-    $dirs | ForEach-Object {
-        $_atoms = @($_.Name -split '/')
+    foreach ($dir in $dirs) {
+        $_atoms = @($dir.Name -split '/')
         if ($_atoms.Length -eq 1) {
             $siteName = $_atoms[0]
             $appName = '/'
@@ -312,13 +312,13 @@ function Get-IISMDirectoryShare
     }
 
     # if it exists, parse the data
-    $obj = New-Object -TypeName psobject
+    $obj = @{}
     $culture = (Get-Culture).TextInfo
 
-    @($share -imatch '\s{2,}') | ForEach-Object {
-        $atoms = $_ -split '\s{2,}'
+    foreach ($shr in @($share -imatch '\s{2,}')) {
+        $atoms = ($shr -split '\s{2,}')
         $name = ($culture.ToTitleCase($atoms[0]) -ireplace '\s+', '')
-        $obj | Add-Member -MemberType NoteProperty -Name $name -Value $atoms[1]
+        $obj[$name] = $atoms[1]
     }
 
     return $obj

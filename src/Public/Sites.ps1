@@ -53,7 +53,7 @@ function Get-IISMSites
         $Quick
     )
 
-    return @($Names | ForEach-Object { Get-IISMSite -Name $_ -Quick:$Quick })
+    return @(foreach ($name in $Names) { Get-IISMSite -Name $name -Quick:$Quick })
 }
 
 function Test-IISMSite
@@ -648,47 +648,54 @@ function Test-IISMSiteBindingCertificate
 
 function Get-IISMSiteBindingCertificate
 {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory=$true)]
+    [CmdletBinding(DefaultParameterSetName='Port')]
+    param(
+        [Parameter(Mandatory=$true, ParameterSetName='Port')]
         [int]
         $Port,
 
-        [Parameter()]
+        [Parameter(ParameterSetName='Port')]
         [string]
         $IPAddress,
 
-        [Parameter()]
+        [Parameter(ParameterSetName='Port')]
         [string]
-        $Hostname
+        $Hostname,
+
+        [Parameter(Mandatory=$true, ParameterSetName='Thumbprint')]
+        [string]
+        $Thumbprint
     )
 
-    # get netsh details by ip address
-    $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert ipport=$($IPAddress):$($Port)" -NoError)
+    if ($PSCmdlet.ParameterSetName -ieq 'port') {
+        # get netsh details by ip address
+        $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert ipport=$($IPAddress):$($Port)" -NoError)
 
-    # if that threw an error, and we have a hostname, check that
-    if ($LASTEXITCODE -ne 0 -and ![string]::IsNullOrWhiteSpace($Hostname) -and $Hostname -ine '*') {
-        $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert hostnameport=$($Hostname):$($Port)" -NoError)
-    }
+        # if that threw an error, and we have a hostname, check that
+        if ($LASTEXITCODE -ne 0 -and ![string]::IsNullOrWhiteSpace($Hostname) -and $Hostname -ine '*') {
+            $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert hostnameport=$($Hostname):$($Port)" -NoError)
+        }
 
-    # get the thumbprint from the output
-    $thumbprint = (($details -imatch 'Certificate Hash\s+:\s+([a-z0-9]+)') -split ':')[1]
-    if (![string]::IsNullOrWhiteSpace($thumbprint)) {
-        $thumbprint = $thumbprint.Trim()
+        # get the thumbprint from the output
+        $Thumbprint = (($details -imatch 'Certificate Hash\s+:\s+([a-z0-9]+)') -split ':')[1]
+        if (![string]::IsNullOrWhiteSpace($Thumbprint)) {
+            $Thumbprint = $Thumbprint.Trim()
+        }
     }
 
     # if no thumbprint, return null
-    if ([string]::IsNullOrWhiteSpace($thumbprint)) {
+    if ([string]::IsNullOrWhiteSpace($Thumbprint)) {
         return $null
     }
 
     # get cert subject if on windows
     if (!(Test-IsUnix)) {
-        $subject = (Get-ChildItem "Cert:/LocalMachine/My/$($t)").Subject
+        $subject = (Get-ChildItem "Cert:/LocalMachine/My/$($Thumbprint)").Subject
     }
 
     # return the cert details
-    return (New-Object -TypeName psobject |
-        Add-Member -MemberType NoteProperty -Name Thumbprint -Value $thumbprint -PassThru |
-        Add-Member -MemberType NoteProperty -Name Subject -Value $subject -PassThru)
+    return @{
+        Thumbprint = $Thumbprint
+        Subject = $subject
+    }
 }
