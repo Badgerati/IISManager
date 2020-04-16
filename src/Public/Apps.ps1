@@ -25,9 +25,7 @@ function Get-IISMApp
         return $null
     }
 
-    $pools = Get-IISMAppPool
-    $dirs = Get-IISMDirectory
-    ConvertTo-IISMAppObject -Apps $result.APP -AppPools $pools -Directories $dirs
+    ConvertTo-IISMAppObject -Apps $result.APP
 }
 
 function Test-IISMApp
@@ -85,8 +83,15 @@ function New-IISMApp
         $PhysicalPath,
 
         [Parameter()]
+        [pscredential]
+        $Credentials,
+
+        [Parameter()]
         [string]
-        $AppPoolName
+        $AppPoolName,
+
+        [switch]
+        $CreatePath
     )
 
     $Name = Add-IISMSlash -Value $Name
@@ -108,8 +113,18 @@ function New-IISMApp
         $_args += " /applicationPool:'$($AppPoolName)'"
     }
 
+    # if create flag passed, make the path
+    if ($CreatePath -and !(Test-Path $PhysicalPath)) {
+        New-Item -Path $PhysicalPath -ItemType Directory -Force | Out-Null
+    }
+
     Invoke-IISMAppCommand -Arguments "add app $($_args)" -NoParse | Out-Null
     Wait-IISMBackgroundTask -ScriptBlock { Test-IISMApp -SiteName $SiteName -Name $Name }
+
+    # set the physical vdir path creds
+    if ($null -ne $Credentials) {
+        Set-IISMDirectoryCredentials -SiteName $SiteName -AppName $Name -Credentials $Credentials
+    }
 
     # return the app
     return (Get-IISMApp -SiteName $SiteName -Name $Name)

@@ -35,3 +35,24 @@ function Get-IISMCertificateThumbprint
 
     return $cert.Thumbprint.ToString()
 }
+
+function New-IISMCredentials
+{
+    [CmdletBinding()]
+    [OutputType([pscredential])]
+    param(
+        [Parameter()]
+        [string]
+        $Username,
+
+        [Parameter()]
+        [string]
+        $Password
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
+        return $null
+    }
+
+    return (New-Object System.Management.Automation.PSCredential -ArgumentList $Username, (ConvertTo-SecureString -AsPlainText $Password -Force))
+}

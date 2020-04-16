@@ -146,7 +146,7 @@ function Get-IISMSiteBindingInformation
 
 function Get-IISMBindingCommandString
 {
-    param (
+    param(
         [Parameter(Mandatory=$true)]
         [string]
         $Protocol,
@@ -185,6 +185,31 @@ function Get-IISMBindingCommandString
     }
 
     return "bindings.[protocol='$($Protocol)',bindingInformation='$($str)']"
+}
+
+function Get-IISMFtpAuthorizationCommandString
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('Allow', 'Deny')]
+        [string]
+        $AccessType,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('Read', 'Write')]
+        [string[]]
+        $Permission,
+
+        [Parameter()]
+        [string[]]
+        $User,
+
+        [Parameter()]
+        [string[]]
+        $Role
+    )
+
+    return "[accessType='$($AccessType)',permissions='$($Permission -join ',')',roles='$($Role -join ',')',users='$($User -join ',')']"
 }
 
 function Wait-IISMBackgroundTask
@@ -256,23 +281,103 @@ function Protect-IISMValue
     return $Value1
 }
 
-function New-IISMCredentials
+function Get-IISMCredentialDetails
 {
-    [CmdletBinding()]
-    [OutputType([pscredential])]
     param(
-        [Parameter()]
-        [string]
-        $Username,
-
-        [Parameter()]
-        [string]
-        $Password
+        [Parameter(Mandatory=$true)]
+        [pscredential]
+        $Credentials
     )
 
-    if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
+    $domain = $Credentials.GetNetworkCredential().Domain
+    $username = $Credentials.GetNetworkCredential().UserName
+    $password = $Credentials.GetNetworkCredential().Password
+
+    if (![string]::IsNullOrWhiteSpace($domain)) {
+        $username = "$($domain)\$($username)"
+    }
+
+    return @{
+        Username = $username
+        Password = $password
+    }
+}
+
+function Split-IISMAppName
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $AppName
+    )
+
+    $atoms = @($AppName -split '/')
+
+    $_siteName = $atoms[0]
+    $_appName = '/'
+
+    if ($atoms.Length -gt 1) {
+        $_appName = ($atoms[1..($atoms.Length - 1)] -join '/')
+    }
+
+    return @{
+        SiteName = $_siteName
+        AppName = $_appName
+    }
+}
+
+function Split-IISMDirectoryName
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $DirName
+    )
+
+    $atoms = @($DirName -split '/')
+
+    $_siteName = $atoms[0]
+    $_appName = '/'
+    $_dirName = [string]::Empty
+
+    # if name ends with a slash, it's a app
+    if ($AppName.EndsWith('/')) {
+        if ($atoms.Length -gt 1) {
+            $_appName = ($atoms[1..($atoms.Length - 1)] -join '/')
+        }
+    }
+
+    # else it's a vdir
+    else {
+        $_dirName = $atoms[$atoms.Length - 1]
+
+        if ($atoms.Length -gt 2) {
+            $_appName = ($atoms[1..($atoms.Length - 2)] -join '/')
+        }
+    }
+
+    return @{
+        SiteName = $_siteName
+        AppName = $_appName
+        DirName = $_dirName
+    }
+}
+
+function Get-IISMDirectoryFtpAuthorizationInternal
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name
+    )
+
+    # get the rules
+    $result = Invoke-IISMAppCommand -Arguments "list config '$($Name)' /section:system.ftpServer/security/authorization" -NoError
+
+    # just return if there are no results
+    if ($null -eq $result.CONFIG) {
         return $null
     }
 
-    return (New-Object System.Management.Automation.PSCredential -ArgumentList $Username, (ConvertTo-SecureString -AsPlainText $Password -Force))
+    return (ConvertTo-IISMFtpAuthorizationObject -Rules $result.CONFIG.'system.ftpServer-security-authorization'.add)
 }

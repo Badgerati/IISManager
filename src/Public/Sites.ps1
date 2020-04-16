@@ -32,9 +32,20 @@ function Get-IISMSite
 
     # if we have a physical path, filter sites
     if (!$Quick -and ![string]::IsNullOrWhiteSpace($PhysicalPath)) {
-        $sites = @($sites | Where-Object { $_.Apps | Where-Object { $_.Directory.PhysicalPath -ieq $PhysicalPath } })
+        $sites = @($sites | Where-Object {
+            $_.Apps | Where-Object {
+                $_.Directories | Where-Object {
+                    $_.PhysicalPath -ieq $PhysicalPath
+                }
+            }
+        })
+
         foreach ($site in $sites) {
-            $site.Apps = @($site.Apps | Where-Object { $_.Directory.PhysicalPath -ieq $PhysicalPath })
+            $site.Apps = @($site.Apps | Where-Object {
+                $_.Directories | Where-Object {
+                    $_.PhysicalPath -ieq $PhysicalPath
+                }
+            })
         }
     }
 
@@ -132,13 +143,20 @@ function Restart-IISMSite
 function Get-IISMSiteBindings
 {
     [CmdletBinding()]
-    param (
+    param(
         [Parameter(Mandatory=$true)]
         [string]
         $Name
     )
 
-    return (Get-IISMSite -Name $Name).Bindings
+    # get site
+    $result = Invoke-IISMAppCommand -Arguments "list site '$($Name)'" -NoError
+    if ($null -eq $result.SITE) {
+        return $null
+    }
+
+    # parse the list of binding
+    return @(ConvertTo-IISMBindingObject -Site $result.SITE)
 }
 
 function Get-IISMSitePhysicalPath
@@ -151,14 +169,23 @@ function Get-IISMSitePhysicalPath
 
         [Parameter()]
         [string]
-        $AppName = '/'
+        $AppName = '/',
+
+        [Parameter()]
+        [string]
+        $DirName
     )
 
     $AppName = Add-IISMSlash -Value $AppName
+    $DirName = Add-IISMSlash -Value $DirName
 
-    return ((Get-IISMSite -Name $Name).Apps | Where-Object {
+    $dirs = ((Get-IISMSite -Name $Name).Apps | Where-Object {
         $_.Path -ieq $AppName
-    } | Select-Object -First 1).Directory.PhysicalPath
+    } | Select-Object -First 1).Directories
+    
+    return ($dirs | Where-Object {
+        $_.Path -ieq $DirName
+    } | Select-Object -First 1).PhysicalPath
 }
 
 function Get-IISMSiteAppPool
@@ -484,11 +511,15 @@ function New-IISMSite
 
         [Parameter()]
         [string]
-        $AppPoolName,
+        $AppPoolName = 'DefaultAppPool',
 
         [Parameter(Mandatory=$true)]
         [string]
         $PhysicalPath,
+
+        [Parameter()]
+        [pscredential]
+        $Credentials,
 
         [switch]
         $CreatePath,
@@ -496,11 +527,6 @@ function New-IISMSite
         [switch]
         $DisableAutoStart
     )
-
-    # if no app-pool name, set to the site name
-    if ([string]::IsNullOrWhiteSpace($AppPoolName)) {
-        $AppPoolName = $Name
-    }
 
     # error if site already exists
     if (Test-IISMSite -Name $Name) {
@@ -521,11 +547,19 @@ function New-IISMSite
     $_args = "/name:'$($Name)' /physicalPath:'$($PhysicalPath)'"
     Invoke-IISMAppCommand -Arguments "add site $($_args)" -NoParse | Out-Null
 
+    # set the physical vdir path creds
+    if ($null -ne $Credentials) {
+        Set-IISMDirectoryCredentials -SiteName $Name -Credentials $Credentials
+    }
+
     # flag the site's auto start mode
     Invoke-IISMAppCommand -Arguments "set site '$($Name)' /serverAutoStart:$(!$DisableAutoStart)" -NoParse | Out-Null
 
     # bind the app-pool to the site's default app
-    Edit-IISMSiteAppPool -Name $Name -AppName '/' -AppPoolName $AppPoolName | Out-Null
+    if ($AppPoolName -ine 'DefaultAppPool') {
+        Edit-IISMSiteAppPool -Name $Name -AppName '/' -AppPoolName $AppPoolName | Out-Null
+    }
+
     Wait-IISMBackgroundTask -ScriptBlock { Test-IISMSite -Name $Name }
 
     # return the site
@@ -698,4 +732,286 @@ function Get-IISMSiteBindingCertificate
         Thumbprint = $Thumbprint
         Subject = $subject
     }
+}
+
+function Test-IISMSiteIsFtp
+{
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name
+    )
+
+    $bindings = @(Get-IISMSiteBindings -Name $Name)
+    return ($bindings.Protocol -icontains 'ftp')
+}
+
+function Set-IISMSiteFtpUserIsolation
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('None', 'StartInUsersDirectory', 'IsolateAllDirectories', 'IsolateRootDirectoryOnly', 'ActiveDirectory')]
+        [string]
+        $Type,
+
+        [Parameter()]
+        [pscredential]
+        $Credentials
+    )
+
+    # error if the site doesn't exist
+    if (!(Test-IISMSite -Name $Name)) {
+        throw "Website '$($Name)' does not exist in IIS"
+    }
+
+    # error if the site isn't ftp
+    if (!(Test-IISMSiteIsFtp -Name $Name)) {
+        throw "Website '$($Name)' is not an FTP site"
+    }
+
+    # set the isolation mode
+    $_args = "/ftpServer.userIsolation.mode:$($Type)"
+
+    if ($Type -ieq 'ActiveDirectory') {
+        if ($null -eq $Credentials) {
+            throw "No credentials supplied when attempting to set the '$($Name)' user isolation type to ActiveDirectory"
+        }
+
+        $creds = Get-IISMCredentialDetails -Credentials $Credentials
+        $_args += " /ftpServer.userIsolation.activeDirectory.userName:$($creds.username) /ftpServer.userIsolation.activeDirectory.password:$($creds.password)"
+    }
+
+    Invoke-IISMAppCommand -Arguments "set site '$($Name)' $($_args)" -NoParse | Out-Null
+}
+
+function Enable-IISMSiteFtpAuthentication
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name,
+
+        [Parameter(ParameterSetName='Anonymous')]
+        [switch]
+        $Anonymous,
+
+        [Parameter(ParameterSetName='Basic')]
+        [switch]
+        $Basic,
+
+        [Parameter(ParameterSetName='ClientCertificate')]
+        [switch]
+        $ClientCertificate,
+
+        [Parameter(ParameterSetName='Custom')]
+        [switch]
+        $Custom,
+
+        [Parameter(ParameterSetName='Anonymous')]
+        [pscredential]
+        $Credentials,
+
+        [Parameter(ParameterSetName='Anonymous')]
+        [Parameter(ParameterSetName='Basic')]
+        [string]
+        $Domain,
+
+        [Parameter(ParameterSetName='Anonymous')]
+        [Parameter(ParameterSetName='Basic')]
+        [string]
+        $LogonMethod,
+
+        [Parameter(Mandatory=$true, ParameterSetName='Custom')]
+        [string]
+        $ProviderName
+    )
+
+    # error if the site doesn't exist
+    if (!(Test-IISMSite -Name $Name)) {
+        throw "Website '$($Name)' does not exist in IIS"
+    }
+
+    # error if the site isn't ftp
+    if (!(Test-IISMSiteIsFtp -Name $Name)) {
+        throw "Website '$($Name)' is not an FTP site"
+    }
+
+    # build the command for the auth type
+    $_args = [string]::Empty
+
+    switch ($PSCmdlet.ParameterSetName) {
+        'Anonymous' {
+            $_args = "/ftpServer.security.authentication.anonymousAuthentication.enabled:true"
+
+            if (![string]::IsNullOrWhiteSpace($Domain)) {
+                $_args += " /ftpServer.security.authentication.anonymousAuthentication.defaultLogonDomain:$($Domain)"
+            }
+
+            if (![string]::IsNullOrWhiteSpace($LogonMethod)) {
+                $_args += " /ftpServer.security.authentication.anonymousAuthentication.logonMethod:$($LogonMethod)"
+            }
+
+            if ($null -ne $Credentials) {
+                $info = Get-IISMCredentialDetails -Credentials $Credentials
+                $_args += " /ftpServer.security.authentication.anonymousAuthentication.userName:$($info.Username) /ftpServer.security.authentication.anonymousAuthentication.password:$($info.Password)"
+            }
+        }
+
+        'Basic' {
+            $_args = "/ftpServer.security.authentication.basicAuthentication.enabled:true"
+
+            if (![string]::IsNullOrWhiteSpace($Domain)) {
+                $_args += " /ftpServer.security.authentication.basicAuthentication.defaultLogonDomain:$($Domain)"
+            }
+
+            if (![string]::IsNullOrWhiteSpace($LogonMethod)) {
+                $_args += " /ftpServer.security.authentication.basicAuthentication.logonMethod:$($LogonMethod)"
+            }
+        }
+
+        'ClientCertificate' {
+            $_args = "/ftpServer.security.authentication.clientCertAuthentication.enabled:true"
+        }
+
+        'Custom' {
+            $_args = "/`"ftpServer.security.authentication.customAuthentication.providers.[name='$($ProviderName)'].enabled:true`""
+        }
+    }
+
+    # run the command
+    Invoke-IISMAppCommand -Arguments "set site '$($Name)' $($_args)" -NoParse | Out-Null
+}
+
+function Disable-IISMSiteFtpAuthentication
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name,
+
+        [Parameter(ParameterSetName='Anonymous')]
+        [switch]
+        $Anonymous,
+
+        [Parameter(ParameterSetName='Basic')]
+        [switch]
+        $Basic,
+
+        [Parameter(ParameterSetName='ClientCertificate')]
+        [switch]
+        $ClientCertificate,
+
+        [Parameter(ParameterSetName='Custom')]
+        [switch]
+        $Custom,
+
+        [Parameter(Mandatory=$true, ParameterSetName='Custom')]
+        [string]
+        $ProviderName
+    )
+
+    # error if the site doesn't exist
+    if (!(Test-IISMSite -Name $Name)) {
+        throw "Website '$($Name)' does not exist in IIS"
+    }
+
+    # error if the site isn't ftp
+    if (!(Test-IISMSiteIsFtp -Name $Name)) {
+        throw "Website '$($Name)' is not an FTP site"
+    }
+
+    # build the command for the auth type
+    $_args = [string]::Empty
+
+    switch ($PSCmdlet.ParameterSetName) {
+        'Anonymous' {
+            $_args = "/ftpServer.security.authentication.anonymousAuthentication.enabled:false"
+        }
+
+        'Basic' {
+            $_args = "/ftpServer.security.authentication.basicAuthentication.enabled:false"
+        }
+
+        'ClientCertificate' {
+            $_args = "/ftpServer.security.authentication.clientCertAuthentication.enabled:false"
+        }
+
+        'Custom' {
+            $_args = "/`"ftpServer.security.authentication.customAuthentication.providers.[name='$($ProviderName)'].enabled:false`""
+        }
+    }
+
+    # run the command
+    Invoke-IISMAppCommand -Arguments "set site '$($Name)' $($_args)" -NoParse | Out-Null
+}
+
+function Add-IISMSiteFtpCustomAuthentication
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $ProviderName,
+
+        [switch]
+        $Enable
+    )
+
+    # error if the site doesn't exist
+    if (!(Test-IISMSite -Name $Name)) {
+        throw "Website '$($Name)' does not exist in IIS"
+    }
+
+    # error if the site isn't ftp
+    if (!(Test-IISMSiteIsFtp -Name $Name)) {
+        throw "Website '$($Name)' is not an FTP site"
+    }
+
+    # build the command
+    $_args = "/+`"ftpServer.security.authentication.customAuthentication.providers.[name='$($ProviderName)',enabled='$($Enable.IsPresent)']`""
+
+    # run the command
+    Invoke-IISMAppCommand -Arguments "set site '$($Name)' $($_args)" -NoParse | Out-Null
+}
+
+function Remove-IISMSiteFtpCustomAuthentication
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $ProviderName
+    )
+
+    # error if the site doesn't exist
+    if (!(Test-IISMSite -Name $Name)) {
+        throw "Website '$($Name)' does not exist in IIS"
+    }
+
+    # error if the site isn't ftp
+    if (!(Test-IISMSiteIsFtp -Name $Name)) {
+        throw "Website '$($Name)' is not an FTP site"
+    }
+
+    # build the command
+    $_args = "/-`"ftpServer.security.authentication.customAuthentication.providers.[name='$($ProviderName)']`""
+
+    # run the command
+    Invoke-IISMAppCommand -Arguments "set site '$($Name)' $($_args)" -NoParse | Out-Null
 }

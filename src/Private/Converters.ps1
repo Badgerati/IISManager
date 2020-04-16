@@ -24,11 +24,7 @@ function ConvertTo-IISMSiteObject
         })
 
         # get binding info
-        $_bindings = @(foreach ($binding in $site.site.bindings.binding) {
-            if ($null -ne $binding) {
-                Get-IISMSiteBindingInformation -Binding $binding
-            }
-        })
+        $_bindings = @(ConvertTo-IISMBindingObject -Site $site)
 
         # get logging info
         $_logging = Get-IISMSiteLogging -Name $site.site.name
@@ -54,7 +50,7 @@ function ConvertTo-IISMSiteObject
             TraceFailedRequestsLogging = $null
             Hsts = $null
             ApplicationDefaults = $null
-            FTP = $_ftp
+            Ftp = $_ftp
             ServerAutoStart = $serverAutoStart
         }
 
@@ -62,6 +58,24 @@ function ConvertTo-IISMSiteObject
     }
 
     return $mapped
+}
+
+function ConvertTo-IISMBindingObject
+{
+    param(
+        [Parameter()]
+        $Site
+    )
+
+    if ($null -eq $Site) {
+        return @()
+    }
+
+    return @(foreach ($binding in $Site.site.bindings.binding) {
+        if ($null -ne $binding) {
+            Get-IISMSiteBindingInformation -Binding $binding
+        }
+    })
 }
 
 function ConvertTo-IISMSiteQuickObject
@@ -85,7 +99,7 @@ function ConvertTo-IISMSiteQuickObject
             TraceFailedRequestsLogging = $null
             Hsts = $null
             ApplicationDefaults = $null
-            FTP = $null
+            Ftp = $null
         }
 
         $mapped += $obj
@@ -148,21 +162,26 @@ function ConvertTo-IISMFtpServerSecurityObject
     # ftp auth
     $_auth = @{
         Anonymous = @{
-            Enabled = ([bool]$Security.authentication.anonymousAuthentication.enabled)
+            Enabled = ($Security.authentication.anonymousAuthentication.enabled -ieq 'true')
             Credentials = (New-IISMCredentials -Username $Security.authentication.anonymousAuthentication.username -Password $Security.authentication.anonymousAuthentication.password)
             Domain = $Security.authentication.anonymousAuthentication.defaultLogonDomain
             LogonMethod = $Security.authentication.anonymousAuthentication.logonMethod
         }
         Basic = @{
-            Enabled = ([bool]$Security.authentication.basicAuthentication.enabled)
+            Enabled = ($Security.authentication.basicAuthentication.enabled -ieq 'true')
             Domain = $Security.authentication.basicAuthentication.defaultLogonDomain
             LogonMethod = $Security.authentication.basicAuthentication.logonMethod
         }
         ClientCertificate = @{
-            Enabled = ([bool]$Security.authentication.clientCertAuthentication.enabled)
+            Enabled = ($Security.authentication.clientCertAuthentication.enabled -ieq 'true')
         }
         Custom = @{
-            Providers = $null
+            Providers = @(foreach ($provider in $Security.authentication.customAuthentication.providers.add) {
+                @{
+                    Enabled = ($provider.enabled -ieq 'true')
+                    Name = $provider.name
+                }
+            })
         }
     }
 
@@ -175,7 +194,7 @@ function ConvertTo-IISMFtpServerSecurityObject
         Authentication = $_auth
         CustomAuthorization = @{
             Provider = @{
-                Enabled = ([bool]$Security.customAuthorization.provider.enabled)
+                Enabled = [bool]$Security.customAuthorization.provider.enabled
                 Name = $Security.customAuthorization.provider.name
             }
         }
@@ -253,6 +272,12 @@ function ConvertTo-IISMAppPoolObject
             State = $pool.state
             ProcessModel = @{
                 Credentials = (New-IISMCredentials -Username $poolInfo.processModel.userName -Password $poolInfo.processModel.password)
+                IdentityType = $poolInfo.processModel.identityType
+                MaxProcesses = [int]$poolInfo.processModel.maxProcesses
+                IdleTimeout = @{
+                    Duration = [int]$poolInfo.processModel.idleTimeout
+                    Action = $poolInfo.processModel.idleTimeoutAction
+                }
             }
             Recycling = $null
             Failure = $null
@@ -270,38 +295,22 @@ function ConvertTo-IISMAppObject
 {
     param (
         [Parameter()]
-        $Apps,
-
-        [Parameter()]
-        $AppPools,
-
-        [Parameter()]
-        $Directories
+        $Apps
     )
 
     $mapped = @()
 
     foreach ($app in $Apps) {
-        $_pool = @(foreach ($pool in $AppPools) {
-            if ($pool.Name -ieq $app.'APPPOOL.NAME') {
-                $pool
-                break
-            }
-        })[0]
-
-        $_dir = @(foreach ($dir in $Directories) {
-            if ($dir.AppName -ieq $app.'APP.NAME') {
-                $dir
-                break
-            }
-        })[0]
+        $_pool = Get-IISMAppPool -Name $app.'APPPOOL.NAME'
+        $_info = Split-IISMAppName -AppName $app.'APP.NAME'
+        $_dirs = Get-IISMDirectory -SiteName $_info.SiteName -AppName $_info.AppName
 
         $obj = @{
             Name = $app.'APP.NAME'
             Path = $app.path
             AppPool = $_pool
             SiteName = $app.'SITE.NAME'
-            Directory = $_dir
+            Directories = $_dirs
         }
 
         $mapped += $obj
@@ -312,19 +321,56 @@ function ConvertTo-IISMAppObject
 
 function ConvertTo-IISMDirectoryObject
 {
-    param (
+    param(
         [Parameter()]
-        $Directories
+        $Directories,
+
+        [switch]
+        $IsFtp
     )
 
     $mapped = @()
 
     foreach ($dir in $Directories) {
+        # get the ftp info
+        $_ftp = $null
+        if ($IsFtp) {
+            $_ftp = @{
+                Authorization = (Get-IISMDirectoryFtpAuthorizationInternal -Name $dir.'VDIR.NAME')
+            }
+        }
+
+        # build the dir object
         $obj = @{
             Name = $dir.'VDIR.NAME'
             PhysicalPath = $dir.physicalPath
             Path = $dir.path
             AppName = $dir.'APP.NAME'
+            Credentials = (New-IISMCredentials -Username $dir.virtualDirectory.userName -Password $dir.virtualDirectory.password)
+            Ftp = $_ftp
+        }
+
+        $mapped += $obj
+    }
+
+    return $mapped
+}
+
+function ConvertTo-IISMFtpAuthorizationObject
+{
+    param(
+        [Parameter()]
+        $Rules
+    )
+
+    $mapped = @()
+
+    foreach ($rule in $Rules) {
+        $obj = @{
+            AccessType = $rule.accessType
+            Users = @($rule.users -split ',').Trim()
+            Roles = @($rule.roles -split ',').Trim()
+            Permissions = @($rule.permissions -split ',').Trim()
         }
 
         $mapped += $obj
