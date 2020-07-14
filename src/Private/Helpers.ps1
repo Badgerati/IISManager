@@ -3,34 +3,6 @@ function Test-IsUnix
     return $PSVersionTable.Platform -ieq 'unix'
 }
 
-function Invoke-IISMAppCommand
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [string]
-        $Arguments,
-
-        [switch]
-        $NoParse,
-
-        [switch]
-        $NoError
-    )
-
-    if ($NoParse) {
-        $result = (Invoke-Expression -Command "$(Get-IISMAppCmdPath) $Arguments")
-    }
-    else {
-        $result = ([xml](Invoke-Expression -Command "$(Get-IISMAppCmdPath) $Arguments /xml /config")).appcmd
-    }
-
-    if ($LASTEXITCODE -ne 0 -and !$NoError) {
-        throw "Failed to run appcmd: $($result)"
-    }
-
-    return $result
-}
-
 function Invoke-IISMNetshCommand
 {
     param (
@@ -212,6 +184,32 @@ function Get-IISMFtpAuthorizationCommandString
     return "[accessType='$($AccessType)',permissions='$($Permission -join ',')',roles='$($Role -join ',')',users='$($User -join ',')']"
 }
 
+function Get-IISMFtpIPSecurityCommandString
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('Allow', 'Deny')]
+        [string]
+        $AccessType,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $IPAddress,
+
+        [Parameter()]
+        [string]
+        $SubnetMask
+    )
+
+    $allowed = ($AccessType -ieq 'Allow')
+
+    if ([string]::IsNullOrWhiteSpace($SubnetMask)) {
+        $SubnetMask = '255.255.255.255'
+    }
+
+    return "[allowed='$($allowed)',subnetMask='$($SubnetMask)',ipAddress='$($IPAddress)']"
+}
+
 function Wait-IISMBackgroundTask
 {
     param (
@@ -341,7 +339,8 @@ function Split-IISMDirectoryName
     $_dirName = [string]::Empty
 
     # if name ends with a slash, it's a app
-    if ($AppName.EndsWith('/')) {
+    if ($DirName.EndsWith('/')) {
+        $atoms = $atoms[0..($atoms.Length - 2)]
         if ($atoms.Length -gt 1) {
             $_appName = ($atoms[1..($atoms.Length - 1)] -join '/')
         }
@@ -372,12 +371,31 @@ function Get-IISMDirectoryFtpAuthorizationInternal
     )
 
     # get the rules
-    $result = Invoke-IISMAppCommand -Arguments "list config '$($Name)' /section:system.ftpServer/security/authorization" -NoError
+    $result = Invoke-IISMAppCommand -Arguments "list config '$($Name)' /section:system.ftpServer/security/authorization"
 
     # just return if there are no results
     if ($null -eq $result.CONFIG) {
         return $null
     }
 
-    return (ConvertTo-IISMFtpAuthorizationObject -Rules $result.CONFIG.'system.ftpServer-security-authorization'.add)
+    return (ConvertTo-IISMFtpAuthorizationObject -Section $result.CONFIG.'system.ftpServer-security-authorization')
+}
+
+function Get-IISMDirectoryFtpIPSecurityInternal
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name
+    )
+
+    # get the rules
+    $result = Invoke-IISMAppCommand -Arguments "list config '$($Name)' /section:system.ftpServer/security/ipSecurity"
+
+    # just return if there are no results
+    if ($null -eq $result.CONFIG) {
+        return $null
+    }
+
+    return (ConvertTo-IISMFtpIPSecurityObject -Section $result.CONFIG.'system.ftpServer-security-ipSecurity')
 }

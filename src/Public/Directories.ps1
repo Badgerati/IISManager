@@ -16,7 +16,10 @@ function Get-IISMDirectory
 
         [Parameter()]
         [string]
-        $PhysicalPath
+        $PhysicalPath,
+
+        [switch]
+        $Quick
     )
 
     $AppName = Add-IISMSlash -Value $AppName
@@ -30,13 +33,7 @@ function Get-IISMDirectory
         return $null
     }
 
-    # is the site ftp?
-    $isFtp = $false
-    if (![string]::IsNullOrWhiteSpace($SiteName)) {
-        $isFtp = Test-IISMSiteIsFtp -Name $SiteName
-    }
-
-    $dirs = ConvertTo-IISMDirectoryObject -Directories $result.VDIR -IsFtp:$isFtp
+    $dirs = ConvertTo-IISMDirectoryObject -Directories $result.VDIR -Quick:$Quick
 
     # filter by site/app
     if (![string]::IsNullOrWhiteSpace($SiteName)) {
@@ -74,7 +71,7 @@ function Test-IISMDirectory
         $DirName
     )
 
-    return ($null -ne (Get-IISMDirectory -SiteName $SiteName -AppName $AppName -DirName $DirName))
+    return ($null -ne (Get-IISMDirectory -SiteName $SiteName -AppName $AppName -DirName $DirName -Quick))
 }
 
 function Remove-IISMDirectory
@@ -91,7 +88,10 @@ function Remove-IISMDirectory
 
         [Parameter()]
         [string]
-        $DirName
+        $DirName,
+
+        [switch]
+        $NoOutput
     )
 
     $AppName = Add-IISMSlash -Value $AppName
@@ -105,7 +105,9 @@ function Remove-IISMDirectory
         Invoke-IISMAppCommand -Arguments "delete vdir '$($Name)'" -NoParse | Out-Null
     }
 
-    return (Get-IISMDirectory)
+    if (!$NoOutput) {
+        return (Get-IISMDirectory)
+    }
 }
 
 function New-IISMDirectory
@@ -133,7 +135,10 @@ function New-IISMDirectory
         $Credentials,
 
         [switch]
-        $CreatePath
+        $CreatePath,
+
+        [switch]
+        $NoOutput
     )
 
     $AppName = Add-IISMSlash -Value $AppName
@@ -168,7 +173,9 @@ function New-IISMDirectory
     }
 
     # return the directory
-    return (Get-IISMDirectory -SiteName $SiteName -AppName $AppName -DirName $DirName)
+    if (!$NoOutput) {
+        return (Get-IISMDirectory -SiteName $SiteName -AppName $AppName -DirName $DirName)
+    }
 }
 
 function Update-IISMDirectory
@@ -193,7 +200,10 @@ function Update-IISMDirectory
 
         [Parameter()]
         [pscredential]
-        $Credentials
+        $Credentials,
+
+        [switch]
+        $NoOutput
     )
 
     $AppName = Add-IISMSlash -Value $AppName
@@ -219,7 +229,9 @@ function Update-IISMDirectory
     }
 
     # return the directory
-    return (Get-IISMDirectory -SiteName $SiteName -AppName $AppName -DirName $DirName)
+    if (!$NoOutput) {
+        return (Get-IISMDirectory -SiteName $SiteName -AppName $AppName -DirName $DirName)
+    }
 }
 
 function Update-IISMDirectoryPhysicalPaths
@@ -232,7 +244,10 @@ function Update-IISMDirectoryPhysicalPaths
 
         [Parameter(Mandatory=$true)]
         [string]
-        $To
+        $To,
+
+        [switch]
+        $NoOutput
     )
 
     # get all directories with the From path
@@ -245,7 +260,9 @@ function Update-IISMDirectoryPhysicalPaths
     }
 
     # return the directories
-    return (Get-IISMDirectory -PhysicalPath $To)
+    if (!$NoOutput) {
+        return (Get-IISMDirectory -PhysicalPath $To)
+    }
 }
 
 function Mount-IISMDirectoryShare
@@ -266,7 +283,10 @@ function Mount-IISMDirectoryShare
 
         [Parameter()]
         [string]
-        $Permission = 'Everyone,FULL'
+        $Permission = 'Everyone,FULL',
+
+        [switch]
+        $NoOutput
     )
 
     $AppName = Add-IISMSlash -Value $AppName
@@ -300,7 +320,9 @@ function Mount-IISMDirectoryShare
     Invoke-IISMNetCommand -Arguments "share $($ShareName)=$($path) /grant:`"$($Permission)`"" | Out-Null
 
     # return the share details
-    return (Get-IISMDirectoryShare -SiteName $SiteName -AppName $AppName -DirName $DirName)
+    if (!$NoOutput) {
+        return (Get-IISMDirectoryShare -SiteName $SiteName -AppName $AppName -DirName $DirName)
+    }
 }
 
 function Remove-IISMDirectoryShare
@@ -501,7 +523,10 @@ function Add-IISMDirectoryFtpAuthorization
 
         [Parameter()]
         [string[]]
-        $Role
+        $Role,
+
+        [switch]
+        $NoOutput
     )
 
     # error if not ftp site
@@ -521,10 +546,26 @@ function Add-IISMDirectoryFtpAuthorization
         throw "Directory '$($Name)' does not exist in IIS"
     }
 
+    # skip if it already has the auth
+    $current = (Get-IISMDirectoryFtpAuthorizationInternal -Name $Name).Rules
+    $check = ($current | Where-Object {
+        ($_.AccessType -ieq $AccessType) -and
+        ($_.Users -join ',') -ieq ($User -join ',') -and
+        ($_.Roles -join ',') -ieq ($Role -join ',') -and
+        ($_.Permissions -join ',') -ieq ($Permission -join ',')
+    })
+
+    if ($null -ne $check) {
+        return
+    }
+
+    # add the auth
     $auth = Get-IISMFtpAuthorizationCommandString -AccessType $AccessType -Permission $Permission -User $User -Role $Role
     Invoke-IISMAppCommand -Arguments "set config '$($Name)' /section:system.ftpServer/security/authorization /+`"$($auth)`" /commit:apphost" -NoParse | Out-Null
 
-    return (Get-IISMDirectoryFtpAuthorization -SiteName $SiteName -AppName $AppName -DirName $DirName)
+    if (!$NoOutput) {
+        return (Get-IISMDirectoryFtpAuthorization -SiteName $SiteName -AppName $AppName -DirName $DirName)
+    }
 }
 
 function Remove-IISMDirectoryFtpAuthorization
@@ -559,7 +600,10 @@ function Remove-IISMDirectoryFtpAuthorization
 
         [Parameter()]
         [string[]]
-        $Role
+        $Role,
+
+        [switch]
+        $NoOutput
     )
 
     # error if not ftp site
@@ -579,8 +623,251 @@ function Remove-IISMDirectoryFtpAuthorization
         throw "Directory '$($Name)' does not exist in IIS"
     }
 
+    # skip if it doesnt have the auth
+    $current = (Get-IISMDirectoryFtpAuthorizationInternal -Name $Name).Rules
+    $check = ($current | Where-Object {
+        ($_.AccessType -ieq $AccessType) -and
+        ($_.Users -join ',') -ieq ($User -join ',') -and
+        ($_.Roles -join ',') -ieq ($Role -join ',') -and
+        ($_.Permissions -join ',') -ieq ($Permission -join ',')
+    })
+
+    if ($null -eq $check) {
+        return
+    }
+
+    # remove the auth
     $auth = Get-IISMFtpAuthorizationCommandString -AccessType $AccessType -Permission $Permission -User $User -Role $Role
     Invoke-IISMAppCommand -Arguments "set config '$($Name)' /section:system.ftpServer/security/authorization /-`"$($auth)`" /commit:apphost" -NoParse | Out-Null
 
-    return (Get-IISMDirectoryFtpAuthorization -SiteName $SiteName -AppName $AppName -DirName $DirName)
+    if (!$NoOutput) {
+        return (Get-IISMDirectoryFtpAuthorization -SiteName $SiteName -AppName $AppName -DirName $DirName)
+    }
+}
+
+function Get-IISMDirectoryFtpIPSecurity
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $SiteName,
+
+        [Parameter()]
+        [string]
+        $AppName = '/',
+
+        [Parameter()]
+        [string]
+        $DirName
+    )
+
+    # error if not ftp site
+    if (!(Test-IISMSiteIsFtp -Name $SiteName)) {
+        throw "Website '$($SiteName)' is not an FTP site"
+    }
+
+    $AppName = Add-IISMSlash -Value $AppName
+
+    $Name = Add-IISMSlash -Value "$($SiteName)$($AppName)" -Append
+    if (![string]::IsNullOrWhiteSpace($DirName)) {
+        $Name = "$($Name)$($DirName)"
+    }
+
+    # error if the directory doesn't exist
+    if (!(Test-IISMDirectory -SiteName $SiteName -AppName $AppName -DirName $DirName)) {
+        throw "Directory '$($Name)' does not exist in IIS"
+    }
+
+    return (Get-IISMDirectoryFtpIPSecurityInternal -Name $Name)
+}
+
+function Add-IISMDirectoryFtpIPSecurity
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $SiteName,
+
+        [Parameter()]
+        [string]
+        $AppName = '/',
+
+        [Parameter()]
+        [string]
+        $DirName,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('Allow', 'Deny')]
+        [string]
+        $AccessType,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $IPAddress,
+
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $SubnetMask = '255.255.255.255',
+
+        [switch]
+        $NoOutput
+    )
+
+    # error if not ftp site
+    if (!(Test-IISMSiteIsFtp -Name $SiteName)) {
+        throw "Website '$($SiteName)' is not an FTP site"
+    }
+
+    $AppName = Add-IISMSlash -Value $AppName
+
+    $Name = Add-IISMSlash -Value "$($SiteName)$($AppName)" -Append
+    if (![string]::IsNullOrWhiteSpace($DirName)) {
+        $Name = "$($Name)$($DirName)"
+    }
+
+    # error if the directory doesn't exist
+    if (!(Test-IISMDirectory -SiteName $SiteName -AppName $AppName -DirName $DirName)) {
+        throw "Directory '$($Name)' does not exist in IIS"
+    }
+
+    # skip if it already has the auth
+    $current = (Get-IISMDirectoryFtpIPSecurityInternal -Name $Name).Rules
+    $check = ($current | Where-Object {
+        ($_.AccessType -ieq $AccessType) -and
+        ($_.IPAddress -ieq $IPAddress) -and
+        ($_.SubnetMask -ieq $SubnetMask)
+    })
+
+    if ($null -ne $check) {
+        Write-Verbose "IP Security already exists"
+        return
+    }
+
+    # add the auth
+    $auth = Get-IISMFtpIPSecurityCommandString -AccessType $AccessType -IPAddress $IPAddress -SubnetMask $SubnetMask
+    Invoke-IISMAppCommand -Arguments "set config '$($Name)' /section:system.ftpServer/security/ipSecurity /+`"$($auth)`" /commit:apphost" -NoParse | Out-Null
+
+    if (!$NoOutput) {
+        return (Get-IISMDirectoryFtpIPSecurity -SiteName $SiteName -AppName $AppName -DirName $DirName)
+    }
+}
+
+function Remove-IISMDirectoryFtpIPSecurity
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $SiteName,
+
+        [Parameter()]
+        [string]
+        $AppName = '/',
+
+        [Parameter()]
+        [string]
+        $DirName,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('Allow', 'Deny')]
+        [string]
+        $AccessType,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $IPAddress,
+
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $SubnetMask = '255.255.255.255',
+
+        [switch]
+        $NoOutput
+    )
+
+    # error if not ftp site
+    if (!(Test-IISMSiteIsFtp -Name $SiteName)) {
+        throw "Website '$($SiteName)' is not an FTP site"
+    }
+
+    $AppName = Add-IISMSlash -Value $AppName
+
+    $Name = Add-IISMSlash -Value "$($SiteName)$($AppName)" -Append
+    if (![string]::IsNullOrWhiteSpace($DirName)) {
+        $Name = "$($Name)$($DirName)"
+    }
+
+    # error if the directory doesn't exist
+    if (!(Test-IISMDirectory -SiteName $SiteName -AppName $AppName -DirName $DirName)) {
+        throw "Directory '$($Name)' does not exist in IIS"
+    }
+
+    # skip if it doesnt have the auth
+    $current = (Get-IISMDirectoryFtpIPSecurityInternal -Name $Name).Rules
+    $check = ($current | Where-Object {
+        ($_.AccessType -ieq $AccessType) -and
+        ($_.IPAddress -ieq $IPAddress) -and
+        ($_.SubnetMask -ieq $SubnetMask)
+    })
+
+    if ($null -eq $check) {
+        Write-Verbose "IP Security rule not found"
+        return
+    }
+
+    # remove the auth
+    $auth = Get-IISMFtpIPSecurityCommandString -AccessType $AccessType -IPAddress $IPAddress -SubnetMask $SubnetMask
+    Invoke-IISMAppCommand -Arguments "set config '$($Name)' /section:system.ftpServer/security/ipSecurity /-`"$($auth)`" /commit:apphost" -NoParse | Out-Null
+
+    if (!$NoOutput) {
+        return (Get-IISMDirectoryFtpIPSecurity -SiteName $SiteName -AppName $AppName -DirName $DirName)
+    }
+}
+
+function Set-IISMDirectoryFtpIPSecurityUnlisted
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $SiteName,
+
+        [Parameter()]
+        [string]
+        $AppName = '/',
+
+        [Parameter()]
+        [string]
+        $DirName,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('Allow', 'Deny')]
+        [string]
+        $AccessType
+    )
+
+    # error if not ftp site
+    if (!(Test-IISMSiteIsFtp -Name $SiteName)) {
+        throw "Website '$($SiteName)' is not an FTP site"
+    }
+
+    $AppName = Add-IISMSlash -Value $AppName
+
+    $Name = Add-IISMSlash -Value "$($SiteName)$($AppName)" -Append
+    if (![string]::IsNullOrWhiteSpace($DirName)) {
+        $Name = "$($Name)$($DirName)"
+    }
+
+    # error if the directory doesn't exist
+    if (!(Test-IISMDirectory -SiteName $SiteName -AppName $AppName -DirName $DirName)) {
+        throw "Directory '$($Name)' does not exist in IIS"
+    }
+
+    # set unlisted type
+    $allow = ($AccessType -ieq 'Allow')
+    Invoke-IISMAppCommand -Arguments "set config '$($Name)' /section:system.ftpServer/security/ipSecurity /allowUnlisted:'$($allow)' /commit:apphost" -NoParse | Out-Null
 }

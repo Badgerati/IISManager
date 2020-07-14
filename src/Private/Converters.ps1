@@ -326,17 +326,21 @@ function ConvertTo-IISMDirectoryObject
         $Directories,
 
         [switch]
-        $IsFtp
+        $Quick
     )
 
     $mapped = @()
 
     foreach ($dir in $Directories) {
         # get the ftp info
+        $_dirName = $dir.'VDIR.NAME'
+        $_siteName = (Split-IISMDirectoryName -DirName $_dirName).SiteName
+
         $_ftp = $null
-        if ($IsFtp) {
+        if (!$Quick -and (Test-IISMSiteIsFtp -Name $_siteName)) {
             $_ftp = @{
-                Authorization = (Get-IISMDirectoryFtpAuthorizationInternal -Name $dir.'VDIR.NAME')
+                Authorization = (Get-IISMDirectoryFtpAuthorizationInternal -Name $_dirName)
+                IPSecurity = (Get-IISMDirectoryFtpIPSecurityInternal -Name $_dirName)
             }
         }
 
@@ -360,20 +364,59 @@ function ConvertTo-IISMFtpAuthorizationObject
 {
     param(
         [Parameter()]
-        $Rules
+        $Section
     )
 
-    $mapped = @()
+    $mapped = @{
+        Rules = @()
+    }
 
-    foreach ($rule in $Rules) {
+    foreach ($rule in $Section.add) {
         $obj = @{
             AccessType = $rule.accessType
             Users = @($rule.users -split ',').Trim()
             Roles = @($rule.roles -split ',').Trim()
             Permissions = @($rule.permissions -split ',').Trim()
+            FullAccess = $false
         }
 
-        $mapped += $obj
+        $obj.FullAccess = (($obj.Permissions -icontains 'read') -and ($obj.Permissions -icontains 'write'))
+        $mapped.Rules += $obj
+    }
+
+    return $mapped
+}
+
+function ConvertTo-IISMFtpIPSecurityObject
+{
+    param(
+        [Parameter()]
+        $Section
+    )
+
+    $mapped = @{
+        AllowUnlisted = ($Section.allowUnlisted -ieq 'true')
+        Rules = @()
+    }
+
+    foreach ($rule in $Section.add) {
+        $accessType = 'Allow'
+        if ($rule.allowed -ieq 'false') {
+            $accessType = 'Deny'
+        }
+
+        $subnetMask = $rule.subnetMask
+        if ([string]::IsNullOrWhiteSpace($subnetMask)) {
+            $subnetMask = '255.255.255.255'
+        }
+
+        $obj = @{
+            AccessType = $accessType
+            IPAddress = $rule.ipAddress
+            SubnetMask = $subnetMask
+        }
+
+        $mapped.Rules += $obj
     }
 
     return $mapped

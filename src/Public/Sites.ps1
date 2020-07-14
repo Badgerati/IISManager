@@ -504,7 +504,7 @@ function Edit-IISMSiteAppPool
 function New-IISMSite
 {
     [CmdletBinding()]
-    param (
+    param(
         [Parameter(Mandatory=$true)]
         [string]
         $Name,
@@ -979,11 +979,22 @@ function Add-IISMSiteFtpCustomAuthentication
         throw "Website '$($Name)' is not an FTP site"
     }
 
-    # build the command
-    $_args = "/+`"ftpServer.security.authentication.customAuthentication.providers.[name='$($ProviderName)',enabled='$($Enable.IsPresent)']`""
+    # remove first, in case details are different
+    Remove-IISMSiteFtpCustomAuthentication -Name $Name -ProviderName $ProviderName
 
-    # run the command
-    Invoke-IISMAppCommand -Arguments "set site '$($Name)' $($_args)" -NoParse | Out-Null
+    # either add it anew, or enable
+    $_provider = ((Get-IISMSite -Name $Name).Ftp.Security.Authentication.Custom.Providers | Where-Object { $_.Name -ieq $ProviderName })
+
+    if ($null -eq $_provider) {
+        # build the command
+        $_args = "/+`"ftpServer.security.authentication.customAuthentication.providers.[name='$($ProviderName)',enabled='$($Enable.IsPresent)']`""
+
+        # run the command
+        Invoke-IISMAppCommand -Arguments "set site '$($Name)' $($_args)" -NoParse | Out-Null
+    }
+    else {
+        Enable-IISMSiteFtpAuthentication -Custom -Name $Name -ProviderName $ProviderName
+    }
 }
 
 function Remove-IISMSiteFtpCustomAuthentication
@@ -1011,6 +1022,50 @@ function Remove-IISMSiteFtpCustomAuthentication
 
     # build the command
     $_args = "/-`"ftpServer.security.authentication.customAuthentication.providers.[name='$($ProviderName)']`""
+
+    # run the command
+    Invoke-IISMAppCommand -Arguments "set site '$($Name)' $($_args)" -NoParse | Out-Null
+}
+
+function Set-IISMSiteFtpSslPolicy
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true, ParameterSetName='Certificate')]
+        [string]
+        $CertificateName,
+
+        [Parameter(Mandatory=$true, ParameterSetName='Thumbprint')]
+        [string]
+        $Thumbprint,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('Allow', 'Require')]
+        [string]
+        $Policy,
+
+        [switch]
+        $Use128Bit
+    )
+
+    # if cert name, get thumbprint
+    if ($PSCmdlet.ParameterSetName -ieq 'Certificate') {
+        $Thumbprint = Get-IISMCertificateThumbprint -CertificateName $CertificateName
+    }
+
+    # error if no thumbprint
+    if ([string]::IsNullOrWhiteSpace($Thumbprint)) {
+        throw "A valid Certificate Name or Thumbprint is required when configuring FTP SSL for '$($Name)'"
+    }
+
+    # build the command
+    $_args = "/ftpServer.security.ssl.serverCertHash:$($Thumbprint) /ftpServer.security.ssl.serverCertStoreName:My"
+    $_args += " /ftpServer.security.ssl.ssl128:$($Use128Bit.IsPresent)"
+    $_args += " /ftpServer.security.ssl.controlChannelPolicy:Ssl$($Policy) /ftpServer.security.ssl.dataChannelPolicy:Ssl$($Policy)"
 
     # run the command
     Invoke-IISMAppCommand -Arguments "set site '$($Name)' $($_args)" -NoParse | Out-Null
