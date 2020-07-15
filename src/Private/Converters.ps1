@@ -108,99 +108,6 @@ function ConvertTo-IISMSiteQuickObject
     return $mapped
 }
 
-function ConvertTo-IISMFtpServerObject
-{
-    param(
-        [Parameter()]
-        $FtpServer
-    )
-
-    if ($null -eq $FtpServer) {
-        return $null
-    }
-
-    $_security = ConvertTo-IISMFtpServerSecurityObject -Security $FtpServer.security
-
-    return @{
-        Connections = $null
-        Security = $_security
-        CustomFeatures = @{
-            Providers = $null
-        }
-        Messages = $null
-        FileHandling = $null
-        FirewallSupport = $null
-        UserIsolation = @{
-            Mode = Protect-IISMValue -Value1 $FtpServer.userIsolation.mode -Value2 'None'
-            ActiveDirectory = @{
-                Credentials = (New-IISMCredentials -Username $FtpServer.userIsolation.activeDirectory.adUserName -Password $FtpServer.userIsolation.activeDirectory.adPassword)
-            }
-        }
-        DirectoryBrowse = $null
-        LogFile = $null
-    }
-}
-
-function ConvertTo-IISMFtpServerSecurityObject
-{
-    param(
-        [Parameter()]
-        $Security
-    )
-
-    if ($null -eq $Security) {
-        return $null
-    }
-
-    # ftp ssl and cert
-    $_ssl = @{
-        Certificate = (Get-IISMSiteBindingCertificate -Thumbprint $Security.ssl.serverCertHash)
-        ControlChannelPolicy = $Security.ssl.controlChannelPolicy
-        DataChannelPolicy = $Security.ssl.dataChannelPolicy
-    }
-
-    # ftp auth
-    $_auth = @{
-        Anonymous = @{
-            Enabled = ($Security.authentication.anonymousAuthentication.enabled -ieq 'true')
-            Credentials = (New-IISMCredentials -Username $Security.authentication.anonymousAuthentication.username -Password $Security.authentication.anonymousAuthentication.password)
-            Domain = $Security.authentication.anonymousAuthentication.defaultLogonDomain
-            LogonMethod = $Security.authentication.anonymousAuthentication.logonMethod
-        }
-        Basic = @{
-            Enabled = ($Security.authentication.basicAuthentication.enabled -ieq 'true')
-            Domain = $Security.authentication.basicAuthentication.defaultLogonDomain
-            LogonMethod = $Security.authentication.basicAuthentication.logonMethod
-        }
-        ClientCertificate = @{
-            Enabled = ($Security.authentication.clientCertAuthentication.enabled -ieq 'true')
-        }
-        Custom = @{
-            Providers = @(foreach ($provider in $Security.authentication.customAuthentication.providers.add) {
-                @{
-                    Enabled = ($provider.enabled -ieq 'true')
-                    Name = $provider.name
-                }
-            })
-        }
-    }
-
-    # ftp security obj
-    return @{
-        DataChannelSecurity = $null
-        CommandFiltering = $null
-        Ssl = $_ssl
-        SslClientCertificates = $null
-        Authentication = $_auth
-        CustomAuthorization = @{
-            Provider = @{
-                Enabled = [bool]$Security.customAuthorization.provider.enabled
-                Name = $Security.customAuthorization.provider.name
-            }
-        }
-    }
-}
-
 function ConvertTo-IISMSiteCustomLogFieldObject
 {
     param (
@@ -339,8 +246,8 @@ function ConvertTo-IISMDirectoryObject
         $_ftp = $null
         if (!$Quick -and (Test-IISMSiteIsFtp -Name $_siteName)) {
             $_ftp = @{
-                Authorization = (Get-IISMDirectoryFtpAuthorizationInternal -Name $_dirName)
-                IPSecurity = (Get-IISMDirectoryFtpIPSecurityInternal -Name $_dirName)
+                Authorization = (Get-IISMFtpDirectoryAuthorizationInternal -Name $_dirName)
+                IPSecurity = (Get-IISMFtpDirectoryIPSecurityInternal -Name $_dirName)
             }
         }
 
@@ -358,6 +265,99 @@ function ConvertTo-IISMDirectoryObject
     }
 
     return $mapped
+}
+
+function ConvertTo-IISMFtpServerObject
+{
+    param(
+        [Parameter()]
+        $FtpServer
+    )
+
+    if ($null -eq $FtpServer) {
+        return $null
+    }
+
+    $_security = ConvertTo-IISMFtpServerSecurityObject -Security $FtpServer.security
+
+    return @{
+        Connections = $null
+        Security = $_security
+        CustomFeatures = @{
+            Providers = $null
+        }
+        Messages = $null
+        FileHandling = $null
+        FirewallSupport = $null
+        UserIsolation = @{
+            Mode = Protect-IISMValue -Value1 $FtpServer.userIsolation.mode -Value2 'None'
+            ActiveDirectory = @{
+                Credentials = (New-IISMCredentials -Username $FtpServer.userIsolation.activeDirectory.adUserName -Password $FtpServer.userIsolation.activeDirectory.adPassword)
+            }
+        }
+        DirectoryBrowse = $null
+        LogFile = $null
+    }
+}
+
+function ConvertTo-IISMFtpServerSecurityObject
+{
+    param(
+        [Parameter()]
+        $Security
+    )
+
+    if ($null -eq $Security) {
+        return $null
+    }
+
+    # ftp ssl and cert
+    $_ssl = @{
+        Certificate = (Get-IISMSiteBindingCertificate -Thumbprint $Security.ssl.serverCertHash)
+        ControlChannelPolicy = $Security.ssl.controlChannelPolicy
+        DataChannelPolicy = $Security.ssl.dataChannelPolicy
+    }
+
+    # ftp auth
+    $_auth = @{
+        Anonymous = @{
+            Enabled = ($Security.authentication.anonymousAuthentication.enabled -ieq 'true')
+            Credentials = (New-IISMCredentials -Username $Security.authentication.anonymousAuthentication.username -Password $Security.authentication.anonymousAuthentication.password)
+            Domain = $Security.authentication.anonymousAuthentication.defaultLogonDomain
+            LogonMethod = $Security.authentication.anonymousAuthentication.logonMethod
+        }
+        Basic = @{
+            Enabled = ($Security.authentication.basicAuthentication.enabled -ieq 'true')
+            Domain = $Security.authentication.basicAuthentication.defaultLogonDomain
+            LogonMethod = $Security.authentication.basicAuthentication.logonMethod
+        }
+        ClientCertificate = @{
+            Enabled = ($Security.authentication.clientCertAuthentication.enabled -ieq 'true')
+        }
+        Custom = @{
+            Providers = @(foreach ($provider in $Security.authentication.customAuthentication.providers.add) {
+                @{
+                    Enabled = ($provider.enabled -ieq 'true')
+                    Name = $provider.name
+                }
+            })
+        }
+    }
+
+    # ftp security obj
+    return @{
+        DataChannelSecurity = $null
+        CommandFiltering = $null
+        Ssl = $_ssl
+        SslClientCertificates = $null
+        Authentication = $_auth
+        CustomAuthorization = @{
+            Provider = @{
+                Enabled = [bool]$Security.customAuthorization.provider.enabled
+                Name = $Security.customAuthorization.provider.name
+            }
+        }
+    }
 }
 
 function ConvertTo-IISMFtpAuthorizationObject

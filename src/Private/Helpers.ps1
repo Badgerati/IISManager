@@ -362,7 +362,7 @@ function Split-IISMDirectoryName
     }
 }
 
-function Get-IISMDirectoryFtpAuthorizationInternal
+function Get-IISMFtpDirectoryAuthorizationInternal
 {
     param(
         [Parameter(Mandatory=$true)]
@@ -381,7 +381,7 @@ function Get-IISMDirectoryFtpAuthorizationInternal
     return (ConvertTo-IISMFtpAuthorizationObject -Section $result.CONFIG.'system.ftpServer-security-authorization')
 }
 
-function Get-IISMDirectoryFtpIPSecurityInternal
+function Get-IISMFtpDirectoryIPSecurityInternal
 {
     param(
         [Parameter(Mandatory=$true)]
