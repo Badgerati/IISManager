@@ -32,9 +32,20 @@ function Get-IISMSite
 
     # if we have a physical path, filter sites
     if (!$Quick -and ![string]::IsNullOrWhiteSpace($PhysicalPath)) {
-        $sites = @($sites | Where-Object { $_.Apps | Where-Object { $_.Directory.PhysicalPath -ieq $PhysicalPath } })
+        $sites = @($sites | Where-Object {
+            $_.Apps | Where-Object {
+                $_.Directories | Where-Object {
+                    $_.PhysicalPath -ieq $PhysicalPath
+                }
+            }
+        })
+
         foreach ($site in $sites) {
-            $site.Apps = @($site.Apps | Where-Object { $_.Directory.PhysicalPath -ieq $PhysicalPath })
+            $site.Apps = @($site.Apps | Where-Object {
+                $_.Directories | Where-Object {
+                    $_.PhysicalPath -ieq $PhysicalPath
+                }
+            })
         }
     }
 
@@ -53,7 +64,7 @@ function Get-IISMSites
         $Quick
     )
 
-    return @($Names | ForEach-Object { Get-IISMSite -Name $_ -Quick:$Quick })
+    return @(foreach ($name in $Names) { Get-IISMSite -Name $name -Quick:$Quick })
 }
 
 function Test-IISMSite
@@ -132,13 +143,20 @@ function Restart-IISMSite
 function Get-IISMSiteBindings
 {
     [CmdletBinding()]
-    param (
+    param(
         [Parameter(Mandatory=$true)]
         [string]
         $Name
     )
 
-    return (Get-IISMSite -Name $Name).Bindings
+    # get site
+    $result = Invoke-IISMAppCommand -Arguments "list site '$($Name)'" -NoError
+    if ($null -eq $result.SITE) {
+        return $null
+    }
+
+    # parse the list of binding
+    return @(ConvertTo-IISMBindingObject -Site $result.SITE)
 }
 
 function Get-IISMSitePhysicalPath
@@ -151,14 +169,23 @@ function Get-IISMSitePhysicalPath
 
         [Parameter()]
         [string]
-        $AppName = '/'
+        $AppName = '/',
+
+        [Parameter()]
+        [string]
+        $DirName
     )
 
     $AppName = Add-IISMSlash -Value $AppName
+    $DirName = Add-IISMSlash -Value $DirName
 
-    return ((Get-IISMSite -Name $Name).Apps | Where-Object {
+    $dirs = ((Get-IISMSite -Name $Name).Apps | Where-Object {
         $_.Path -ieq $AppName
-    } | Select-Object -First 1).Directory.PhysicalPath
+    } | Select-Object -First 1).Directories
+    
+    return ($dirs | Where-Object {
+        $_.Path -ieq $DirName
+    } | Select-Object -First 1).PhysicalPath
 }
 
 function Get-IISMSiteAppPool
@@ -477,18 +504,22 @@ function Edit-IISMSiteAppPool
 function New-IISMSite
 {
     [CmdletBinding()]
-    param (
+    param(
         [Parameter(Mandatory=$true)]
         [string]
         $Name,
 
         [Parameter()]
         [string]
-        $AppPoolName,
+        $AppPoolName = 'DefaultAppPool',
 
         [Parameter(Mandatory=$true)]
         [string]
         $PhysicalPath,
+
+        [Parameter()]
+        [pscredential]
+        $Credentials,
 
         [switch]
         $CreatePath,
@@ -496,11 +527,6 @@ function New-IISMSite
         [switch]
         $DisableAutoStart
     )
-
-    # if no app-pool name, set to the site name
-    if ([string]::IsNullOrWhiteSpace($AppPoolName)) {
-        $AppPoolName = $Name
-    }
 
     # error if site already exists
     if (Test-IISMSite -Name $Name) {
@@ -521,11 +547,19 @@ function New-IISMSite
     $_args = "/name:'$($Name)' /physicalPath:'$($PhysicalPath)'"
     Invoke-IISMAppCommand -Arguments "add site $($_args)" -NoParse | Out-Null
 
+    # set the physical vdir path creds
+    if ($null -ne $Credentials) {
+        Set-IISMDirectoryCredentials -SiteName $Name -Credentials $Credentials
+    }
+
     # flag the site's auto start mode
     Invoke-IISMAppCommand -Arguments "set site '$($Name)' /serverAutoStart:$(!$DisableAutoStart)" -NoParse | Out-Null
 
     # bind the app-pool to the site's default app
-    Edit-IISMSiteAppPool -Name $Name -AppName '/' -AppPoolName $AppPoolName | Out-Null
+    if ($AppPoolName -ine 'DefaultAppPool') {
+        Edit-IISMSiteAppPool -Name $Name -AppName '/' -AppPoolName $AppPoolName | Out-Null
+    }
+
     Wait-IISMBackgroundTask -ScriptBlock { Test-IISMSite -Name $Name }
 
     # return the site
@@ -648,47 +682,67 @@ function Test-IISMSiteBindingCertificate
 
 function Get-IISMSiteBindingCertificate
 {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory=$true)]
+    [CmdletBinding(DefaultParameterSetName='Port')]
+    param(
+        [Parameter(Mandatory=$true, ParameterSetName='Port')]
         [int]
         $Port,
 
-        [Parameter()]
+        [Parameter(ParameterSetName='Port')]
         [string]
         $IPAddress,
 
-        [Parameter()]
+        [Parameter(ParameterSetName='Port')]
         [string]
-        $Hostname
+        $Hostname,
+
+        [Parameter(Mandatory=$true, ParameterSetName='Thumbprint')]
+        [string]
+        $Thumbprint
     )
 
-    # get netsh details by ip address
-    $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert ipport=$($IPAddress):$($Port)" -NoError)
+    if ($PSCmdlet.ParameterSetName -ieq 'port') {
+        # get netsh details by ip address
+        $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert ipport=$($IPAddress):$($Port)" -NoError)
 
-    # if that threw an error, and we have a hostname, check that
-    if ($LASTEXITCODE -ne 0 -and ![string]::IsNullOrWhiteSpace($Hostname) -and $Hostname -ine '*') {
-        $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert hostnameport=$($Hostname):$($Port)" -NoError)
-    }
+        # if that threw an error, and we have a hostname, check that
+        if ($LASTEXITCODE -ne 0 -and ![string]::IsNullOrWhiteSpace($Hostname) -and $Hostname -ine '*') {
+            $details = (Invoke-IISMNetshCommand -Arguments "http show sslcert hostnameport=$($Hostname):$($Port)" -NoError)
+        }
 
-    # get the thumbprint from the output
-    $thumbprint = (($details -imatch 'Certificate Hash\s+:\s+([a-z0-9]+)') -split ':')[1]
-    if (![string]::IsNullOrWhiteSpace($thumbprint)) {
-        $thumbprint = $thumbprint.Trim()
+        # get the thumbprint from the output
+        $Thumbprint = (($details -imatch 'Certificate Hash\s+:\s+([a-z0-9]+)') -split ':')[1]
+        if (![string]::IsNullOrWhiteSpace($Thumbprint)) {
+            $Thumbprint = $Thumbprint.Trim()
+        }
     }
 
     # if no thumbprint, return null
-    if ([string]::IsNullOrWhiteSpace($thumbprint)) {
+    if ([string]::IsNullOrWhiteSpace($Thumbprint)) {
         return $null
     }
 
     # get cert subject if on windows
     if (!(Test-IsUnix)) {
-        $subject = (Get-ChildItem "Cert:/LocalMachine/My/$($t)").Subject
+        $subject = (Get-ChildItem "Cert:/LocalMachine/My/$($Thumbprint)").Subject
     }
 
     # return the cert details
-    return (New-Object -TypeName psobject |
-        Add-Member -MemberType NoteProperty -Name Thumbprint -Value $thumbprint -PassThru |
-        Add-Member -MemberType NoteProperty -Name Subject -Value $subject -PassThru)
+    return @{
+        Thumbprint = $Thumbprint
+        Subject = $subject
+    }
+}
+
+function Test-IISMSiteIsFtp
+{
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name
+    )
+
+    $bindings = @(Get-IISMSiteBindings -Name $Name)
+    return ($bindings.Protocol -icontains 'ftp')
 }

@@ -3,34 +3,6 @@ function Test-IsUnix
     return $PSVersionTable.Platform -ieq 'unix'
 }
 
-function Invoke-IISMAppCommand
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [string]
-        $Arguments,
-
-        [switch]
-        $NoParse,
-
-        [switch]
-        $NoError
-    )
-
-    if ($NoParse) {
-        $result = (Invoke-Expression -Command "$(Get-IISMAppCmdPath) $Arguments")
-    }
-    else {
-        $result = ([xml](Invoke-Expression -Command "$(Get-IISMAppCmdPath) $Arguments /xml /config")).appcmd
-    }
-
-    if ($LASTEXITCODE -ne 0 -and !$NoError) {
-        throw "Failed to run appcmd: $($result)"
-    }
-
-    return $result
-}
-
 function Invoke-IISMNetshCommand
 {
     param (
@@ -101,9 +73,9 @@ function Get-IISMSiteBindingInformation
     # get the protocol
     $protocol = $Binding.protocol
     $info = @{
-        'IP' = $null;
-        'Port' = $null;
-        'Hostname' = $null
+        IP = $null
+        Port = $null
+        Hostname = $null
     }
 
     # get ip, port, hostname
@@ -133,19 +105,20 @@ function Get-IISMSiteBindingInformation
     }
 
     # set the binding info and return
-    $info = (New-Object -TypeName psobject |
-        Add-Member -MemberType NoteProperty -Name Protocol -Value $protocol -PassThru |
-        Add-Member -MemberType NoteProperty -Name IPAddress -Value $info.IP -PassThru |
-        Add-Member -MemberType NoteProperty -Name Port -Value $info.Port -PassThru |
-        Add-Member -MemberType NoteProperty -Name Hostname -Value $info.Hostname -PassThru |
-        Add-Member -MemberType NoteProperty -Name Certificate -Value $cert -PassThru)
+    $info = @{
+        Protocol = $protocol
+        IPAddress = $info.IP
+        Port = $info.Port
+        Hostname = $info.Hostname
+        Certificate = $cert
+    }
 
     return $info
 }
 
 function Get-IISMBindingCommandString
 {
-    param (
+    param(
         [Parameter(Mandatory=$true)]
         [string]
         $Protocol,
@@ -184,6 +157,57 @@ function Get-IISMBindingCommandString
     }
 
     return "bindings.[protocol='$($Protocol)',bindingInformation='$($str)']"
+}
+
+function Get-IISMFtpAuthorizationCommandString
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('Allow', 'Deny')]
+        [string]
+        $AccessType,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('Read', 'Write')]
+        [string[]]
+        $Permission,
+
+        [Parameter()]
+        [string[]]
+        $User,
+
+        [Parameter()]
+        [string[]]
+        $Role
+    )
+
+    return "[accessType='$($AccessType)',permissions='$($Permission -join ',')',roles='$($Role -join ',')',users='$($User -join ',')']"
+}
+
+function Get-IISMFtpIPSecurityCommandString
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('Allow', 'Deny')]
+        [string]
+        $AccessType,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $IPAddress,
+
+        [Parameter()]
+        [string]
+        $SubnetMask
+    )
+
+    $allowed = ($AccessType -ieq 'Allow')
+
+    if ([string]::IsNullOrWhiteSpace($SubnetMask)) {
+        $SubnetMask = '255.255.255.255'
+    }
+
+    return "[allowed='$($allowed)',subnetMask='$($SubnetMask)',ipAddress='$($IPAddress)']"
 }
 
 function Wait-IISMBackgroundTask
@@ -253,4 +277,125 @@ function Protect-IISMValue
     }
 
     return $Value1
+}
+
+function Get-IISMCredentialDetails
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [pscredential]
+        $Credentials
+    )
+
+    $domain = $Credentials.GetNetworkCredential().Domain
+    $username = $Credentials.GetNetworkCredential().UserName
+    $password = $Credentials.GetNetworkCredential().Password
+
+    if (![string]::IsNullOrWhiteSpace($domain)) {
+        $username = "$($domain)\$($username)"
+    }
+
+    return @{
+        Username = $username
+        Password = $password
+    }
+}
+
+function Split-IISMAppName
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $AppName
+    )
+
+    $atoms = @($AppName -split '/')
+
+    $_siteName = $atoms[0]
+    $_appName = '/'
+
+    if ($atoms.Length -gt 1) {
+        $_appName = ($atoms[1..($atoms.Length - 1)] -join '/')
+    }
+
+    return @{
+        SiteName = $_siteName
+        AppName = $_appName
+    }
+}
+
+function Split-IISMDirectoryName
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $DirName
+    )
+
+    $atoms = @($DirName -split '/')
+
+    $_siteName = $atoms[0]
+    $_appName = '/'
+    $_dirName = [string]::Empty
+
+    # if name ends with a slash, it's a app
+    if ($DirName.EndsWith('/')) {
+        $atoms = $atoms[0..($atoms.Length - 2)]
+        if ($atoms.Length -gt 1) {
+            $_appName = ($atoms[1..($atoms.Length - 1)] -join '/')
+        }
+    }
+
+    # else it's a vdir
+    else {
+        $_dirName = $atoms[$atoms.Length - 1]
+
+        if ($atoms.Length -gt 2) {
+            $_appName = ($atoms[1..($atoms.Length - 2)] -join '/')
+        }
+    }
+
+    return @{
+        SiteName = $_siteName
+        AppName = $_appName
+        DirName = $_dirName
+    }
+}
+
+function Get-IISMFtpDirectoryAuthorizationInternal
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name
+    )
+
+    # get the rules
+    $result = Invoke-IISMAppCommand -Arguments "list config '$($Name)' /section:system.ftpServer/security/authorization"
+
+    # just return if there are no results
+    if ($null -eq $result.CONFIG) {
+        return $null
+    }
+
+    return (ConvertTo-IISMFtpAuthorizationObject -Section $result.CONFIG.'system.ftpServer-security-authorization')
+}
+
+function Get-IISMFtpDirectoryIPSecurityInternal
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name
+    )
+
+    # get the rules
+    $result = Invoke-IISMAppCommand -Arguments "list config '$($Name)' /section:system.ftpServer/security/ipSecurity"
+
+    # just return if there are no results
+    if ($null -eq $result.CONFIG) {
+        return $null
+    }
+
+    return (ConvertTo-IISMFtpIPSecurityObject -Section $result.CONFIG.'system.ftpServer-security-ipSecurity')
 }
