@@ -52,6 +52,7 @@ Import-Module -Name IISManager
 * New-IISMDirectory
 * Remove-IISMDirectory
 * Remove-IISMDirectoryShare
+* Set-IISMDirectoryCredentials
 * Test-IISMDirectory
 * Test-IISMDirectoryShare
 * Update-IISMDirectory
@@ -84,7 +85,7 @@ Import-Module -Name IISManager
 * Test-IISMSiteBindingCertificate
 * Test-IISMSiteRunning
 
-#### Logging
+### Logging
 
 * Add-IISMSiteCustomLogField
 * Add-IISMSiteLogField
@@ -104,9 +105,35 @@ Import-Module -Name IISManager
 * Test-IISMSiteCustomLogField
 * Test-IISMSiteLogField
 
+
+### FTP
+
+* Add-IISMFtpDirectoryIPSecurity
+* Add-IISMFtpDirectoryAuthorization
+* Add-IISMFtpServerCustomAuthentication
+* Add-IISMFtpSiteCustomAuthentication
+* Disable-IISMFtpSiteAuthentication
+* Enable-IISMFtpSiteAuthentication
+* Get-IISMFtpDirectoryAuthorization
+* Get-IISMFtpDirectoryIPSecurity
+* Get-IISMFtpServerCustomAuthentication
+* Get-IISMFtpServerCustomAuthenticationProvider
+* Register-IISMFtpServerCustomAuthenticationProvider
+* Remove-IISMFtpDirectoryAuthorization
+* Remove-IISMFtpDirectoryIPSecurity
+* Remove-IISMFtpServerCustomAuthentication
+* Remove-IISMFtpSiteCustomAuthentication
+* Set-IISMFtpDirectoryIPSecurityUnlisted
+* Set-IISMFtpSiteSslPolicy
+* Set-IISMFtpSiteUserIsolation
+* Test-IISMSiteIsFtp
+* Unregister-IISMFtpServerCustomAuthenticationProvider
+
 ### Misc
 
 * Get-IISMCertificateThumbprint
+* Invoke-IISMAppCommand
+* New-IISMCredentials
 * Reset-IISMServer
 
 ## ToDo

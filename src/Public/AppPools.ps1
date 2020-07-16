@@ -30,7 +30,7 @@ function Get-IISMAppPools
         $Names
     )
 
-    return @($Names | ForEach-Object { Get-IISMAppPool -Name $_ })
+    return @(foreach ($name in $Names) { Get-IISMAppPool -Name $name })
 }
 
 function Test-IISMAppPool
@@ -276,28 +276,19 @@ function Update-IISMAppPoolProcessModel
 
     # set the user identity
     if (![string]::IsNullOrWhiteSpace($IdentifyType)) {
+        $_args = "/processModel.identityType:$($IdentifyType)"
+
         # setup as specific user with creds
         if ($IdentifyType -ieq 'SpecificUser') {
             if ($null -eq $Credentials) {
                 throw "No credentials supplied when attempting to set the '$($Name)' application pool to run as SpecificUser"
             }
 
-            $domain = $Credentials.GetNetworkCredential().Domain
-            $username = $Credentials.GetNetworkCredential().UserName
-            $password = $Credentials.GetNetworkCredential().Password
-
-            if (![string]::IsNullOrWhiteSpace($domain)) {
-                $username = "$($domain)\$($username)"
-            }
-
-            $_args = "/processModel.identityType:$($IdentifyType) /processModel.userName:$($username) /processModel.password:$($password)"
-            Invoke-IISMAppCommand -Arguments "set apppool '$($Name)' $($_args)" -NoParse | Out-Null
+            $creds = Get-IISMCredentialDetails -Credentials $Credentials
+            $_args += " /processModel.userName:$($creds.username) /processModel.password:$($creds.password)"
         }
 
-        # setup as inbuilt identity
-        else {
-            Invoke-IISMAppCommand -Arguments "set apppool '$($Name)' /processModel.identityType:$($IdentifyType)" -NoParse | Out-Null
-        }
+        Invoke-IISMAppCommand -Arguments "set apppool '$($Name)' $($_args)" -NoParse | Out-Null
     }
 
     # return the app-pool
@@ -338,8 +329,8 @@ function Update-IISMAppPoolRecycling
         Invoke-IISMAppCommand -Arguments "set apppool '$($Name)' /-recycling.periodicRestart.schedule" -NoParse | Out-Null
 
         # add the new times
-        @($RecycleTimes) | ForEach-Object {
-            Invoke-IISMAppCommand -Arguments "set apppool '$($Name)' /+`"recycling.periodicRestart.schedule.[value='$($_.ToString())']`"" -NoParse | Out-Null
+        foreach ($time in @($RecycleTimes)) {
+            Invoke-IISMAppCommand -Arguments "set apppool '$($Name)' /+`"recycling.periodicRestart.schedule.[value='$($time.ToString())']`"" -NoParse | Out-Null
         }
     }
 
