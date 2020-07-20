@@ -182,7 +182,7 @@ function ConvertTo-IISMAppPoolObject
                 IdentityType = $poolInfo.processModel.identityType
                 MaxProcesses = [int]$poolInfo.processModel.maxProcesses
                 IdleTimeout = @{
-                    Duration = [int]$poolInfo.processModel.idleTimeout
+                    Duration = [timespan]$poolInfo.processModel.idleTimeout
                     Action = $poolInfo.processModel.idleTimeoutAction
                 }
             }
