@@ -172,6 +172,11 @@ function ConvertTo-IISMAppPoolObject
     foreach ($pool in $AppPools) {
         $poolInfo = $pool.add
 
+        $idleTimeout = '00:00:00'
+        if (![string]::IsNullOrWhiteSpace($poolInfo.processModel.idleTimeout)) {
+            $idleTimeout = $poolInfo.processModel.idleTimeout
+        }
+
         $obj = @{
             Name = $pool.'APPPOOL.NAME'
             PipelineMode = $pool.PipelineMode
@@ -182,7 +187,7 @@ function ConvertTo-IISMAppPoolObject
                 IdentityType = $poolInfo.processModel.identityType
                 MaxProcesses = [int]$poolInfo.processModel.maxProcesses
                 IdleTimeout = @{
-                    Duration = [int]$poolInfo.processModel.idleTimeout
+                    Duration = [timespan]$idleTimeout
                     Action = $poolInfo.processModel.idleTimeoutAction
                 }
             }

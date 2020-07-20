@@ -11,7 +11,7 @@
     RootModule = 'IISManager.psm1'
 
     # Version number of this module.
-    ModuleVersion = '2.0.0'
+    ModuleVersion = '2.0.1'
 
     # ID used to uniquely identify this module
     GUID = 'a3ba417c-dc1d-446b-95a5-a306ab26c1af'
