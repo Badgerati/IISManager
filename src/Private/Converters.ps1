@@ -32,7 +32,7 @@ function ConvertTo-IISMSiteObject
         # get the ftp info - but only if the protocol is ftp
         $_ftp = $null
         if ($_bindings.Protocol -icontains 'ftp') {
-            $_ftp = ConvertTo-IISMFtpServerObject -FtpServer $site.site.ftpServer
+            $_ftp = ConvertTo-IISMFtpServerObject -SiteName $site.site.name -FtpServer $site.site.ftpServer
         }
 
         # server auto start
@@ -160,6 +160,28 @@ function ConvertTo-IISMSiteLoggingObject
     return $obj
 }
 
+function ConvertTo-IISMFtpSiteLoggingObject
+{
+    param (
+        [Parameter()]
+        $Fields,
+
+        [Parameter()]
+        $Path,
+
+        [Parameter()]
+        $Period
+    )
+
+    $obj = @{
+        Fields = $Fields
+        Path = $Path
+        Period = $Period
+    }
+
+    return $obj
+}
+
 function ConvertTo-IISMAppPoolObject
 {
     param (
@@ -207,15 +229,20 @@ function ConvertTo-IISMAppObject
 {
     param (
         [Parameter()]
-        $Apps
+        $Apps,
+
+        [switch]
+        $Quick
     )
 
     $mapped = @()
 
     foreach ($app in $Apps) {
-        $_pool = Get-IISMAppPool -Name $app.'APPPOOL.NAME'
-        $_info = Split-IISMAppName -AppName $app.'APP.NAME'
-        $_dirs = Get-IISMDirectory -SiteName $_info.SiteName -AppName $_info.AppName
+        if (!$Quick) {
+            $_pool = Get-IISMAppPool -Name $app.'APPPOOL.NAME'
+            $_info = Split-IISMAppName -AppName $app.'APP.NAME'
+            $_dirs = Get-IISMDirectory -SiteName $_info.SiteName -AppName $_info.AppName
+        }
 
         $obj = @{
             Name = $app.'APP.NAME'
@@ -248,7 +275,6 @@ function ConvertTo-IISMDirectoryObject
         $_dirName = $dir.'VDIR.NAME'
         $_siteName = (Split-IISMDirectoryName -DirName $_dirName).SiteName
 
-        $_ftp = $null
         if (!$Quick -and (Test-IISMSiteIsFtp -Name $_siteName)) {
             $_ftp = @{
                 Authorization = (Get-IISMFtpDirectoryAuthorizationInternal -Name $_dirName)
@@ -275,6 +301,10 @@ function ConvertTo-IISMDirectoryObject
 function ConvertTo-IISMFtpServerObject
 {
     param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $SiteName,
+
         [Parameter()]
         $FtpServer
     )
@@ -301,7 +331,7 @@ function ConvertTo-IISMFtpServerObject
             }
         }
         DirectoryBrowse = $null
-        LogFile = $null
+        LogFile = (Get-IISMFtpSiteLogging -Name $SiteName)
     }
 }
 

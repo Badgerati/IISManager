@@ -896,3 +896,395 @@ function Set-IISMFtpSiteSslPolicy
     # run the command
     Invoke-IISMAppCommand -Arguments "set site '$($Name)' $($_args)" -NoParse | Out-Null
 }
+
+function Get-IISMFtpSiteLogging
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            $logFields = Get-IISMFtpSiteLogFields -Name $Name
+            $logPath = Get-IISMFtpSiteLogPath -Name $Name
+            $logPeriod = Get-IISMFtpSiteLogPeriod -Name $Name
+        }
+
+        default {
+            $logFields = Get-IISMFtpSiteLogFields -Default
+            $logPath = Get-IISMFtpSiteLogPath -Default
+            $logPeriod = Get-IISMFtpSiteLogPeriod -Default
+        }
+    }
+
+    return (ConvertTo-IISMFtpSiteLoggingObject `
+        -Fields $logFields `
+        -Path $logPath `
+        -Period $logPeriod)
+}
+
+
+
+function Get-IISMFtpSiteLogPeriod
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            if (!(Test-IISMSite -Name $Name)) {
+                throw "Website '$($Name)' does not exist in IIS"
+            }
+
+            if (!(Test-IISMSiteIsFtp -Name $Name)) {
+                throw "Website '$($Name)' is not an FTP site"
+            }
+
+            $result = Invoke-IISMAppCommand -Arguments "list site '$Name'" -NoError
+
+            $period = $result.SITE.site.ftpServer.logFile.period
+            if ([string]::IsNullOrWhiteSpace($period)) {
+                $period = Get-IISMSiteLogPeriod -Default
+            }
+        }
+
+        default {
+            $result = Invoke-IISMAppCommand -Arguments "list config /section:sites" -NoError
+            $period = $result.CONFIG.'system.applicationHost-sites'.siteDefaults.ftpServer.logFile.period
+            $period = (Protect-IISMValue $period 'Daily')
+        }
+    }
+
+    return $period
+}
+
+function Set-IISMFtpSiteLogPeriod
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('Hourly', 'Daily', 'Weekly', 'Monthly')]
+        [string]
+        $Period,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            if (!(Test-IISMSite -Name $Name)) {
+                throw "Website '$($Name)' does not exist in IIS"
+            }
+
+            if (!(Test-IISMSiteIsFtp -Name $Name)) {
+                throw "Website '$($Name)' is not an FTP site"
+            }
+
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"[name='$($Name)'].ftpServer.logFile.period:$($Period)`"" -NoParse | Out-Null
+        }
+
+        default {
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"siteDefaults.ftpServer.logFile.period:$($Period)`"" -NoParse | Out-Null
+        }
+    }
+}
+
+function Get-IISMFtpSiteLogPath
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            if (!(Test-IISMSite -Name $Name)) {
+                throw "Website '$($Name)' does not exist in IIS"
+            }
+
+            if (!(Test-IISMSiteIsFtp -Name $Name)) {
+                throw "Website '$($Name)' is not an FTP site"
+            }
+
+            $result = Invoke-IISMAppCommand -Arguments "list site '$Name'" -NoError
+
+            $logpath = $result.SITE.site.ftpServer.logFile.directory
+            if ([string]::IsNullOrWhiteSpace($logpath)) {
+                $logpath = Get-IISMSiteLogPath -Default
+            }
+
+            $logpath = (Join-Path $logpath "FTPSVC$($result.SITE.site.id)")
+        }
+
+        default {
+            $result = Invoke-IISMAppCommand -Arguments "list config /section:sites" -NoError
+            $logpath = $result.CONFIG.'system.applicationHost-sites'.siteDefaults.ftpServer.logFile.directory
+            $logpath = (Protect-IISMValue $logpath (Get-IISMSiteDefaultLogPath))
+        }
+    }
+
+    return [System.Environment]::ExpandEnvironmentVariables($logpath)
+}
+
+function Set-IISMFtpSiteLogPath
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Path,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            if (!(Test-IISMSite -Name $Name)) {
+                throw "Website '$($Name)' does not exist in IIS"
+            }
+
+            if (!(Test-IISMSiteIsFtp -Name $Name)) {
+                throw "Website '$($Name)' is not an FTP site"
+            }
+
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"[name='$($Name)'].ftpServer.logFile.directory:$($Path)`"" -NoParse | Out-Null
+        }
+
+        default {
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"siteDefaults.ftpServer.logFile.directory:$($Path)`"" -NoParse | Out-Null
+        }
+    }
+}
+
+function Get-IISMFtpSiteLogFields
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            if (!(Test-IISMSite -Name $Name)) {
+                throw "Website '$($Name)' does not exist in IIS"
+            }
+
+            if (!(Test-IISMSiteIsFtp -Name $Name)) {
+                throw "Website '$($Name)' is not an FTP site"
+            }
+
+            $result = Invoke-IISMAppCommand -Arguments "list site '$Name'" -NoError
+
+            $fields = $result.SITE.site.ftpServer.logFile.logExtFileFlags
+            if ([string]::IsNullOrWhiteSpace($fields)) {
+                $fields = Get-IISMFtpSiteLogFields -Default
+            }
+        }
+
+        default {
+            $result = Invoke-IISMAppCommand -Arguments "list config /section:sites" -NoError
+            $fields = $result.CONFIG.'system.applicationHost-sites'.siteDefaults.ftpServer.logFile.logExtFileFlags
+            $fields = (Protect-IISMValue $fields (Get-IISMFtpSiteDefaultLogFields))
+        }
+    }
+
+    return ($fields -split ',').Trim()
+}
+
+function Set-IISMFtpSiteLogFields
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [string[]]
+        $Fields,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            if (!(Test-IISMSite -Name $Name)) {
+                throw "Website '$($Name)' does not exist in IIS"
+            }
+
+            if (!(Test-IISMSiteIsFtp -Name $Name)) {
+                throw "Website '$($Name)' is not an FTP site"
+            }
+
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"[name='$($Name)'].ftpServer.logFile.logExtFileFlags:$($Fields -join ',')`"" -NoParse | Out-Null
+        }
+
+        default {
+            Invoke-IISMAppCommand -Arguments "set config /section:sites /`"siteDefaults.ftpServer.logFile.logExtFileFlags:$($Fields -join ',')`"" -NoParse | Out-Null
+        }
+    }
+}
+
+function Add-IISMFtpSiteLogField
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Field,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            $fields = Get-IISMFtpSiteLogFields -Name $Name
+            if ($fields -inotcontains $Field) {
+                $fields += $Field
+            }
+
+            Set-IISMFtpSiteLogFields -Name $Name -Fields $fields
+        }
+
+        default {
+            $fields = Get-IISMFtpSiteLogFields -Default
+            if ($fields -inotcontains $Field) {
+                $fields += $Field
+            }
+
+            Set-IISMFtpSiteLogFields -Default -Fields $fields
+        }
+    }
+}
+
+function Remove-IISMFtpSiteLogField
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Field,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            $fields = (Get-IISMFtpSiteLogFields -Name $Name | Where-Object { $_ -ine $Field })
+            Set-IISMFtpSiteLogFields -Name $Name -Fields $fields
+        }
+
+        default {
+            $fields = (Get-IISMFtpSiteLogFields -Default | Where-Object { $_ -ine $Field })
+            Set-IISMFtpSiteLogFields -Default -Fields $fields
+        }
+    }
+}
+
+function Clear-IISMFtpSiteLogFields
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            Set-IISMFtpSiteLogFields -Name $Name -Fields @()
+        }
+
+        default {
+            Set-IISMFtpSiteLogFields -Default -Fields @()
+        }
+    }
+}
+
+function Test-IISMFtpSiteLogField
+{
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    param (
+        [Parameter(Mandatory=$true, ParameterSetName='Site')]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Field,
+
+        [Parameter(ParameterSetName='Default')]
+        [switch]
+        $Default
+    )
+
+    # get current fields
+    switch ($PSCmdlet.ParameterSetName.ToLowerInvariant()) {
+        'site' {
+            $fields = Get-IISMFtpSiteLogFields -Name $Name
+        }
+
+        default {
+            $fields = Get-IISMFtpSiteLogFields -Default
+        }
+    }
+
+    return ($fields -icontains $Field)
+}

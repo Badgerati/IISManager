@@ -8,7 +8,10 @@ function Get-IISMApp
 
         [Parameter()]
         [string]
-        $Name
+        $Name,
+
+        [switch]
+        $Quick
     )
 
     $Name = Add-IISMSlash -Value $Name
@@ -25,7 +28,7 @@ function Get-IISMApp
         return $null
     }
 
-    ConvertTo-IISMAppObject -Apps $result.APP
+    ConvertTo-IISMAppObject -Apps $result.APP -Quick:$Quick
 }
 
 function Test-IISMApp
@@ -41,7 +44,7 @@ function Test-IISMApp
         $Name = '/'
     )
 
-    return ($null -ne (Get-IISMApp -SiteName $SiteName -Name $Name))
+    return ($null -ne (Get-IISMApp -SiteName $SiteName -Name $Name -Quick))
 }
 
 function Remove-IISMApp
@@ -54,7 +57,10 @@ function Remove-IISMApp
 
         [Parameter()]
         [string]
-        $Name = '/'
+        $Name = '/',
+
+        [switch]
+        $NoOutput
     )
 
     $Name = Add-IISMSlash -Value $Name
@@ -63,7 +69,9 @@ function Remove-IISMApp
         Invoke-IISMAppCommand -Arguments "delete app '$($SiteName)$($Name)'" -NoParse | Out-Null
     }
 
-    return (Get-IISMApp)
+    if (!$NoOutput) {
+        return (Get-IISMApp)
+    }
 }
 
 function New-IISMApp
@@ -91,7 +99,10 @@ function New-IISMApp
         $AppPoolName,
 
         [switch]
-        $CreatePath
+        $CreatePath,
+
+        [switch]
+        $NoOutput
     )
 
     $Name = Add-IISMSlash -Value $Name
@@ -127,7 +138,9 @@ function New-IISMApp
     }
 
     # return the app
-    return (Get-IISMApp -SiteName $SiteName -Name $Name)
+    if (!$NoOutput) {
+        return (Get-IISMApp -SiteName $SiteName -Name $Name)
+    }
 }
 
 function Update-IISMApp
@@ -148,7 +161,10 @@ function Update-IISMApp
 
         [Parameter()]
         [string]
-        $AppPoolName
+        $AppPoolName,
+
+        [switch]
+        $NoOutput
     )
 
     $Name = Add-IISMSlash -Value $Name
@@ -170,5 +186,7 @@ function Update-IISMApp
     }
 
     # return the app
-    return (Get-IISMApp -SiteName $SiteName -Name $Name)
+    if (!$NoOutput) {
+        return (Get-IISMApp -SiteName $SiteName -Name $Name)
+    }
 }

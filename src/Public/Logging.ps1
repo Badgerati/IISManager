@@ -110,6 +110,7 @@ function Get-IISMSiteLogPeriod
 
     return $period
 }
+
 function Set-IISMSiteLogPeriod
 {
     [CmdletBinding(DefaultParameterSetName='Default')]
