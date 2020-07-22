@@ -54,3 +54,24 @@ function Get-IISMSiteDefaultLogFields
 
     return ($fields -join ',')
 }
+
+function Get-IISMFtpSiteDefaultLogFields
+{
+    $fields = @(
+        'Date',
+        'Time',
+        'ClientIP',
+        'UserName',
+        'ServerIP',
+        'Method',
+        'UriStem',
+        'FtpStatus',
+        'Win32Status',
+        'ServerPort',
+        'FtpSubStatus',
+        'Session',
+        'FullPath'
+    )
+
+    return ($fields -join ',')
+}
