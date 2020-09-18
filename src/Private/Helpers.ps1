@@ -110,6 +110,7 @@ function Get-IISMSiteBindingInformation
         IPAddress = $info.IP
         Port = $info.Port
         Hostname = $info.Hostname
+        SslFlags = [bool]$Binding.sslFlags
         Certificate = $cert
     }
 
@@ -133,7 +134,10 @@ function Get-IISMBindingCommandString
 
         [Parameter()]
         [string]
-        $Hostname
+        $Hostname,
+
+        [switch]
+        $SslFlags
     )
 
     if ([string]::IsNullOrWhiteSpace($IPAddress) -and [string]::IsNullOrWhiteSpace($Hostname) -and $Port -le 0) {
@@ -156,7 +160,12 @@ function Get-IISMBindingCommandString
         }
     }
 
-    return "bindings.[protocol='$($Protocol)',bindingInformation='$($str)']"
+    $sslFlag = [string]::Empty
+    if ($Protocol -ieq 'https') {
+        $sslFlag = ",sslFlags='$(if ($SslFlags) { 1 } else { 0 })'"
+    }
+
+    return "bindings.[protocol='$($Protocol)',bindingInformation='$($str)'$($sslFlag)]"
 }
 
 function Get-IISMFtpAuthorizationCommandString

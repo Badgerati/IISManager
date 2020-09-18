@@ -348,7 +348,8 @@ function Remove-IISMSiteBindings
 
     # remove all bindings
     @(Get-IISMSiteBindings -Name $Name) | ForEach-Object {
-        Remove-IISMSiteBinding -Name $Name -Protocol $_.Protocol -Port $_.Port -IPAddress $_.IPAddress -Hostname $_.Hostname | Out-Null
+        $sslFlag = $_.SslFlags
+        Remove-IISMSiteBinding -Name $Name -Protocol $_.Protocol -Port $_.Port -IPAddress $_.IPAddress -Hostname $_.Hostname -SslFlags:$sslFlag | Out-Null
     }
 }
 
@@ -375,7 +376,10 @@ function Remove-IISMSiteBinding
 
         [Parameter()]
         [string]
-        $Hostname
+        $Hostname,
+
+        [switch]
+        $SslFlags
     )
 
     # error if the site doesn't exist
@@ -393,7 +397,7 @@ function Remove-IISMSiteBinding
         Remove-IISMSiteBindingCertificate -Port $Port -IPAddress $IPAddress -Hostname $Hostname
     }
 
-    $binding = Get-IISMBindingCommandString -Protocol $Protocol -Port $Port -IPAddress $IPAddress -Hostname $Hostname
+    $binding = Get-IISMBindingCommandString -Protocol $Protocol -Port $Port -IPAddress $IPAddress -Hostname $Hostname -SslFlags:$SslFlags
     Invoke-IISMAppCommand -Arguments "set site '$($Name)' /-`"$($binding)`"" -NoParse | Out-Null
     return (Get-IISMSiteBindings -Name $Name)
 }
@@ -436,7 +440,10 @@ function Add-IISMSiteBinding
 
         [Parameter()]
         [string]
-        $CertificateThumbprint
+        $CertificateThumbprint,
+
+        [switch]
+        $SslFlags
     )
 
     # error if the site doesn't exist
@@ -448,7 +455,7 @@ function Add-IISMSiteBinding
     Remove-IISMSiteBinding -Name $Name -Protocol $Protocol -Port $Port -IPAddress $IPAddress -Hostname $Hostname | Out-Null
 
     # add the binding
-    $binding = Get-IISMBindingCommandString -Protocol $Protocol -Port $Port -IPAddress $IPAddress -Hostname $Hostname
+    $binding = Get-IISMBindingCommandString -Protocol $Protocol -Port $Port -IPAddress $IPAddress -Hostname $Hostname -SslFlags:$SslFlags
     Invoke-IISMAppCommand -Arguments "set site '$($Name)' /+`"$($binding)`"" -NoParse | Out-Null
 
     # if https, bind a certificate if thumbprint supplied
